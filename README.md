@@ -1,1 +1,3 @@
-# vod-archive
+## vod-archive
+
+Scripts for pulling youtube and twitch videos
