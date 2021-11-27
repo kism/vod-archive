@@ -63,13 +63,14 @@ def main(args):
     print("http response: " + str(response))
 
     if response.status_code == 200:
-        print(response.json())
+        # print(response.json())
         print()
 
         ytresult = response.json()
 
         for key, value in ytresult.items():
-            print(key, value)
+            #print(key, value)
+            pass
 
         print()
 
@@ -79,29 +80,32 @@ def main(args):
             urllist.append("https://youtu.be/" +
                            ytresult['items'][i]['id']['videoId'])
 
-        print(urllist)
+        # print(urllist)
 
         global yt_dlp
 
         # Add custom headers
         #yt_dlp.utils.std_headers.update({'Referer': 'https://www.google.com'})
 
+        print(ydl_opts)
         # ℹ️ See the public functions in yt_dlp.YoutubeDL for for other available functions.
         # Eg: "ydl.download", "ydl.download_with_info_file"
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            for i in range(len(urllist)):
-                wat = []
-                wat.append(urllist[i])
-                print(wat)
-                ydl.download(wat)
+            ydl.download(urllist)
+
+            # for i in range(len(urllist)):
+            #    wat = []
+            #    wat.append(urllist[i])
+            #    print(wat)
+            #    ydl.download(wat)
             # ydl.add_post_processor(MyCustomPP())
         #    info = ydl.extract_info(
         #        'https://www.youtube.com/watch?v=BaW_jenozKc')
 
             # ℹ️ ydl.sanitize_info makes the info json-serializable
             # print(json.dumps(ydl.sanitize_info(info)))
+            pass
 
-        pass
     else:
         pass
 
@@ -111,7 +115,7 @@ apikey = "AIzaSyCrR9oOvpdwXofYJZKwrHUKRrQ1HkALTX8"
 exitcode = 1
 
 ydl_opts = {
-    'format': 'best',
+    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]',
     'outtmpl': '%(upload_date)s %(title)s [%(id)s].%(ext)s',
     'postprocessors': [{
         # Embed metadata in video using ffmpeg.
@@ -120,8 +124,8 @@ ydl_opts = {
         'add_chapters': True,
         'add_metadata': True,
     }],
-    'logger': MyLogger(),
-    'progress_hooks': [my_hook],
+    # 'logger': MyLogger(),
+    # 'progress_hooks': [my_hook],
 }
 
 if __name__ == '__main__':
