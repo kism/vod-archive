@@ -7,6 +7,7 @@ from requests import api
 from requests.models import RequestEncodingMixin
 import yt_dlp
 
+
 def my_hook(d):
     if d['status'] == 'finished':
         print('Done downloading, now converting ...')
@@ -15,6 +16,7 @@ def my_hook(d):
 def print_debug(text):
     if debug:
         print('\033[93m' + text + '\033[0m')
+
 
 def main(args):
     global ydl_opts
@@ -38,7 +40,6 @@ def main(args):
 
     if args.s:
         search = args.s
-
 
     # Get twitch streamer user id
     request = "https://api.twitch.tv/helix/users"
@@ -106,17 +107,6 @@ def main(args):
         print()
 
 
-
-
-
-
-
-
-
-
-
-
-
 # Vars
 debug = False
 
@@ -136,7 +126,8 @@ ydl_opts = {
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Archive a youtube channel')
-    parser.add_argument('-b', type=str, required=True, help='Broadcaster login')
+    parser.add_argument('-b', type=str, required=True,
+                        help='Broadcaster login')
     parser.add_argument('-c', type=str, required=True, help='API Client ID')
     parser.add_argument('-k', type=str, required=True, help='API bearer token')
     parser.add_argument('-p', type=str, help='Path')

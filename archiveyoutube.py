@@ -88,11 +88,11 @@ def main(args):
         for i in range(len(ytresult['items'])):
             try:
                 urllist.append("https://youtu.be/" +
-                            ytresult['items'][i]['id']['videoId'])
+                               ytresult['items'][i]['id']['videoId'])
             except:
                 endloop = True
 
-        try: 
+        try:
             nextpage = ytresult['nextPageToken']
         except:
             endloop = True
