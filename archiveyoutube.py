@@ -106,7 +106,7 @@ def main(args):
 
 
 # Vars
-apikey = "AIzaSyCrR9oOvpdwXofYJZKwrHUKRrQ1HkALTX8"
+apikey = ''
 exitcode = 1
 debug = False
 
