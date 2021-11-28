@@ -128,8 +128,6 @@ def main(args):
 
 
 # Vars
-apikey = ''
-exitcode = 1
 debug = False
 
 ydl_opts = {
