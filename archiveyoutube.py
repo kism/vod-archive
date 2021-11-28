@@ -22,7 +22,7 @@ def main(args):
     global apikey
     global ydl_opts
 
-    nvideos = ''
+    nvideos = 0
     search = ''
 
     print(args)
@@ -33,11 +33,11 @@ def main(args):
     if args.p:
         if args.p[-1] != '/':
             args.p = args.p + '/'
-        
+
         ydl_opts['outtmpl'] = args.p + ydl_opts['outtmpl']
 
     if args.n:
-        nvideos = str(args.n)
+        nvideos = args.n
 
     if args.s:
         search = args.s
@@ -45,20 +45,37 @@ def main(args):
     if args.w:
         ydl_opts['writedescription'] = True
 
-    request = "https://www.googleapis.com/youtube/v3/search"
-    params = dict(key=apikey, q=search, part="snippet",
-                  channelId=args.c, maxResults=nvideos, order="viewcount")
+    urllist = []
+    nextpage = ''
+    endloop = False
+    nvideos = int(nvideos)
 
-    print("http request url: " + request + "\n" + str(params))
+    while nvideos > 0 and endloop == False:
+        nextrequest = 0
+        if nvideos > 50:
+            nextrequest = 50
+            nvideos = nvideos - 50
+        else:
+            nextrequest = nvideos
+            nvideos = 0
 
-    try:
-        response = requests.get(request, params=params)
-    except:
-        pass
+        request = "https://www.googleapis.com/youtube/v3/search"
+        params = dict(key=apikey, q=search, part="snippet",
+                      channelId=args.c, pageToken=nextpage, maxResults=str(nextrequest), order="viewcount")
 
-    print("http response: " + str(response))
+        print("http request url: " + request + "\n" + str(params))
 
-    if response.status_code == 200:
+        try:
+            response = requests.get(request, params=params)
+        except:
+            pass
+
+        print("http response: " + str(response))
+
+        if response.status_code != 200:
+            print("All is heck, HTTP: " + str(response.status_code))
+            exit(1)
+
         print_debug(response.json())
 
         ytresult = response.json()
@@ -69,40 +86,45 @@ def main(args):
 
         print()
 
-        urllist = []
-
         for i in range(len(ytresult['items'])):
-            urllist.append("https://youtu.be/" +
-                           ytresult['items'][i]['id']['videoId'])
+            try:
+                urllist.append("https://youtu.be/" +
+                            ytresult['items'][i]['id']['videoId'])
+            except:
+                endloop = True
 
-        print(str(urllist) + '\n')
+        try: 
+            nextpage = ytresult['nextPageToken']
+        except:
+            endloop = True
 
-        # Add custom headers
-        yt_dlp.utils.std_headers.update({'Referer': 'https://www.google.com'})
+        print('Number of Videos: ' + str(nvideos) +
+              '\nURLs: ' + str(urllist) + '\n')
 
-        print(ydl_opts)
-        # ℹ️ See the public functions in yt_dlp.YoutubeDL for for other available functions.
-        # Eg: "ydl.download", "ydl.download_with_info_file"
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # ydl.download(urllist)
+    # Add custom headers
+    yt_dlp.utils.std_headers.update(
+        {'Referer': 'https://www.google.com'})
 
-            for i in range(len(urllist)):
-                wat = []
-                wat.append(urllist[i])
+    print(ydl_opts)
+    # ℹ️ See the public functions in yt_dlp.YoutubeDL for for other available functions.
+    # Eg: "ydl.download", "ydl.download_with_info_file"
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        # ydl.download(urllist)
 
-                info = ydl.extract_info(wat[0])
+        for i in range(len(urllist)):
+            wat = []
+            wat.append(urllist[i])
 
-                print('\n' + info['title'] + ' | ' + wat[0])
+            info = ydl.extract_info(wat[0])
 
-                ydl.download(wat)
-                
-                if args.w:
-                    print_debug(info['description'])
+            print('\n' + info['title'] + ' | ' + wat[0])
 
-                print()
+            ydl.download(wat)
 
-    else:
-        pass
+            if args.w:
+                print_debug(info['description'])
+
+            print()
 
 
 # Vars
