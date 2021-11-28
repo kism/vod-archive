@@ -19,13 +19,12 @@ def print_debug(text):
 
 
 def main(args):
-    global apikey
     global ydl_opts
 
     nvideos = 0
     search = ''
 
-    print(args)
+    print_debug(args)
 
     if args.k:
         apikey = args.k
@@ -147,8 +146,8 @@ ydl_opts = {
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Archive a youtube channel')
     parser.add_argument('-c', type=str, required=True, help='Channel ID')
+    parser.add_argument('-k', type=str, required=True, help='API Key')
     parser.add_argument('-p', type=str, help='Path')
-    parser.add_argument('-k', type=str, help='API Key')
     parser.add_argument('-n', type=str, help='Number of videos')
     parser.add_argument('-s', type=str, help='Search Text')
     parser.add_argument('-w', action='store_true',
