@@ -8,32 +8,19 @@ from requests.models import RequestEncodingMixin
 import yt_dlp
 
 
-class MyLogger:
-    def debug(self, msg):
-        # For compatability with youtube-dl, both debug and info are passed into debug
-        # You can distinguish them by the prefix '[debug] '
-        if msg.startswith('[debug] '):
-            pass
-        else:
-            self.info(msg)
-
-    def info(self, msg):
-        pass
-
-    def warning(self, msg):
-        pass
-
-    def error(self, msg):
-        print(msg)
-
-
 def my_hook(d):
     if d['status'] == 'finished':
         print('Done downloading, now converting ...')
 
 
+def print_debug(text):
+    if debug:
+        print('\033[93m' + text + '\033[0m')
+
+
 def main(args):
     global apikey
+    global ydl_opts
 
     nvideos = ''
     search = ''
@@ -49,6 +36,9 @@ def main(args):
     if args.s:
         search = args.s
 
+    if args.w:
+        ydl_opts['writedescription'] = True
+
     request = "https://www.googleapis.com/youtube/v3/search"
     params = dict(key=apikey, q=search, part="snippet",
                   channelId=args.c, maxResults=nvideos, order="viewcount")
@@ -63,8 +53,7 @@ def main(args):
     print("http response: " + str(response))
 
     if response.status_code == 200:
-        # print(response.json())
-        print()
+        print_debug(response.json())
 
         ytresult = response.json()
 
@@ -80,31 +69,31 @@ def main(args):
             urllist.append("https://youtu.be/" +
                            ytresult['items'][i]['id']['videoId'])
 
-        # print(urllist)
-
-        global yt_dlp
+        print(str(urllist) + '\n')
 
         # Add custom headers
-        #yt_dlp.utils.std_headers.update({'Referer': 'https://www.google.com'})
+        yt_dlp.utils.std_headers.update({'Referer': 'https://www.google.com'})
 
         print(ydl_opts)
         # ℹ️ See the public functions in yt_dlp.YoutubeDL for for other available functions.
         # Eg: "ydl.download", "ydl.download_with_info_file"
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download(urllist)
+            # ydl.download(urllist)
 
-            # for i in range(len(urllist)):
-            #    wat = []
-            #    wat.append(urllist[i])
-            #    print(wat)
-            #    ydl.download(wat)
-            # ydl.add_post_processor(MyCustomPP())
-        #    info = ydl.extract_info(
-        #        'https://www.youtube.com/watch?v=BaW_jenozKc')
+            for i in range(len(urllist)):
+                wat = []
+                wat.append(urllist[i])
 
-            # ℹ️ ydl.sanitize_info makes the info json-serializable
-            # print(json.dumps(ydl.sanitize_info(info)))
-            pass
+                info = ydl.extract_info(wat[0])
+
+                print('\n' + info['title'] + ' | ' + wat[0])
+
+                ydl.download(wat)
+                
+                if args.w:
+                    print_debug(info['description'])
+
+                print()
 
     else:
         pass
@@ -113,10 +102,12 @@ def main(args):
 # Vars
 apikey = "AIzaSyCrR9oOvpdwXofYJZKwrHUKRrQ1HkALTX8"
 exitcode = 1
+debug = False
 
 ydl_opts = {
     'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]',
     'outtmpl': '%(upload_date)s %(title)s [%(id)s].%(ext)s',
+    'writedescription': False,
     'postprocessors': [{
         # Embed metadata in video using ffmpeg.
         # ℹ️ See yt_dlp.postprocessor.FFmpegMetadataPP for the arguments it accepts
@@ -124,8 +115,7 @@ ydl_opts = {
         'add_chapters': True,
         'add_metadata': True,
     }],
-    # 'logger': MyLogger(),
-    # 'progress_hooks': [my_hook],
+    'progress_hooks': [my_hook],
 }
 
 if __name__ == '__main__':
@@ -134,6 +124,8 @@ if __name__ == '__main__':
     parser.add_argument('-k', type=str, help='API Key')
     parser.add_argument('-n', type=str, help='Number of videos')
     parser.add_argument('-s', type=str, help='Search Text')
+    parser.add_argument('-w', action='store_true',
+                        help='Write video description to file')
 
     args = parser.parse_args()
 
