@@ -4,7 +4,13 @@ Scripts for pulling youtube and twitch videos
 
 Needs a youtube data v3 api key
 
-### examples
+### Prerequisites 
+
+`pip3 install -r requirements.txt`
+
+Make sure you also have ffmpeg installed and in your path
+
+### Examples
 
 Archive top 100 videos of a youtube channel
 
