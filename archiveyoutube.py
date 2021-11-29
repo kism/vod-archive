@@ -21,7 +21,7 @@ def print_debug(text):
 def main(args):
     global ydl_opts
 
-    nvideos = 0
+    nvideos = 99999
     search = ''
 
     print_debug(args)

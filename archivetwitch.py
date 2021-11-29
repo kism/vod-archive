@@ -15,13 +15,13 @@ def my_hook(d):
 
 def print_debug(text):
     if debug:
-        print('\033[93m' + text + '\033[0m')
+        print('\033[93m' + str(text) + '\033[0m')
 
 
 def main(args):
     global ydl_opts
 
-    nvideos = 0
+    nvideos = 100
     search = ''
 
     print_debug(args)
@@ -56,15 +56,8 @@ def main(args):
     twitchuserjson = response.json()
     twitchuser = twitchuserjson['data'][0]['id']
 
-    print('Twitch user: ' + args.b)
-    print('Twitch ID  : ' + twitchuser)
-
-    print('\nthis program is very incomplete')
-    print('this program is very incomplete')
-    print('this program is very incomplete')
-    print('this program is very incomplete')
-
-    exit(420)
+    print_debug('Twitch user: ' + args.b)
+    print_debug('Twitch ID  : ' + twitchuser)
 
     urllist = []
     nextpage = ''
@@ -80,38 +73,66 @@ def main(args):
             nextrequest = nvideos
             nvideos = 0
 
-        request = "https://api.twitch.tv/" + args.c + "/clips"
-        params = dict(key=bearertoken, )
+        request = "https://api.twitch.tv/helix/clips"
+        params = dict(broadcaster_id=twitchuser,
+                      after=nextpage, first=nextrequest)
+        headers = {"Authorization": "Bearer " + args.k, "Client-Id": args.c}
 
-        print("http request url: " + request + "\n" + str(params))
+        print_debug("http request url: " + request + "\n" + str(params))
 
         try:
-            response = requests.get(request, params=params)
+            response = requests.get(request, params=params, headers=headers)
         except:
-            pass
+            endloop = True
 
-        print("http response: " + str(response))
+        print_debug("http response: " + str(response))
 
         if response.status_code != 200:
             print("All is heck, HTTP: " + str(response.status_code))
             exit(1)
 
-        print_debug(response.json())
+        twitchclipresult = response.json()
 
-        ytresult = response.json()
+        print_debug(twitchclipresult)
 
-        for key, value in ytresult.items():
-            #print(key, value)
-            pass
+        print(len(twitchclipresult['data']))
 
-        print()
+        for i in range(len(twitchclipresult['data'])):
+            urllist.append(twitchclipresult['data'][i]['url'])
+
+        print_debug('\n' + str(urllist) + '\n')
+
+        nextpage = twitchclipresult['pagination']['cursor']
+
+    print('\nDownloading ' + str(len(urllist)) +
+          ' clips form ' + twitchuser + ' (' + args.b + ')\n')
+
+    # Add custom headers
+    yt_dlp.utils.std_headers.update(
+        {'Referer': 'https://www.google.com'})
+
+    print_debug(ydl_opts)
+    # ℹ️ See the public functions in yt_dlp.YoutubeDL for for other available functions.
+    # Eg: "ydl.download", "ydl.download_with_info_file"
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+
+        for i in range(len(urllist)):
+            wat = []
+            wat.append(urllist[i])
+
+            info = ydl.extract_info(wat[0])
+
+            print('\n' + info['title'] + ' | ' + wat[0])
+
+            ydl.download(wat)
+
+            print()
 
 
 # Vars
 debug = False
 
 ydl_opts = {
-    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]',
     'outtmpl': '%(upload_date)s %(title)s [%(id)s].%(ext)s',
     'writedescription': False,
     'postprocessors': [{
