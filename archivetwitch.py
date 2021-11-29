@@ -26,8 +26,7 @@ def main(args):
 
     print_debug(args)
 
-    if args.k:
-        bearertoken = args.k
+    bearertoken = args.k
 
     if args.p:
         if args.p[-1] != '/':
@@ -44,7 +43,7 @@ def main(args):
     # Get twitch streamer user id
     request = "https://api.twitch.tv/helix/users"
     params = dict(login=args.b)
-    headers = {"Authorization": "Bearer " + args.k, "Client-Id": args.c}
+    headers = {"Authorization": "Bearer " + bearertoken, "Client-Id": args.c}
     response = requests.get(request, params=params, headers=headers)
 
     print_debug(response.json())
@@ -76,7 +75,7 @@ def main(args):
         request = "https://api.twitch.tv/helix/clips"
         params = dict(broadcaster_id=twitchuser,
                       after=nextpage, first=nextrequest)
-        headers = {"Authorization": "Bearer " + args.k, "Client-Id": args.c}
+        headers = {"Authorization": "Bearer " + bearertoken, "Client-Id": args.c}
 
         print_debug("http request url: " + request + "\n" + str(params))
 
@@ -95,7 +94,7 @@ def main(args):
 
         print_debug(twitchclipresult)
 
-        print(len(twitchclipresult['data']))
+        print_debug('Items found: ' + len(twitchclipresult['data']))
 
         for i in range(len(twitchclipresult['data'])):
             urllist.append(twitchclipresult['data'][i]['url'])
