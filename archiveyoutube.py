@@ -3,6 +3,7 @@
 import json
 import argparse
 import requests
+import os
 from requests import api
 from requests.models import RequestEncodingMixin
 import yt_dlp
@@ -15,8 +16,20 @@ def my_hook(d):
 
 def print_debug(text):
     if debug:
-        print('\033[93m' + text + '\033[0m')
+        print('\033[93m' + str(text) + '\033[0m')
 
+
+def scan_directory(path):
+    print_debug(path)
+
+    existingfilelist = []
+    for _, _, files in os.walk(path):
+        for filename in files:
+            existingfilelist.append(filename)
+
+    # print_debug("Directory List:")
+    # print_debug(existingfilelist)
+    return existingfilelist
 
 def main(args):
     global ydl_opts
@@ -49,6 +62,9 @@ def main(args):
     endloop = False
     nvideos = int(nvideos)
 
+    # Get files in folder
+    existingfilelist = scan_directory(args.p)
+
     while nvideos > 0 and endloop == False:
         nextrequest = 0
         if nvideos > 50:
@@ -75,7 +91,7 @@ def main(args):
             print("All is heck, HTTP: " + str(response.status_code))
             exit(1)
 
-        print_debug(response.json())
+        # print_debug(response.json())
 
         ytresult = response.json()
 
@@ -86,11 +102,20 @@ def main(args):
         print()
 
         for i in range(len(ytresult['items'])):
+            duplicatefound = False
             try:
-                urllist.append("https://youtu.be/" +
-                               ytresult['items'][i]['id']['videoId'])
+                videoid = ytresult['items'][i]['id']['videoId']
             except:
                 endloop = True
+
+            for existingvideofilename in existingfilelist:
+                if videoid in existingvideofilename:
+                    duplicatefound = True
+
+            if not duplicatefound and not endloop:
+                    urllist.append("https://youtu.be/" + videoid)
+            else: 
+                print("Skipping video: " + videoid)
 
         try:
             nextpage = ytresult['nextPageToken']
@@ -105,7 +130,7 @@ def main(args):
         {'Referer': 'https://www.google.com'})
 
     print(ydl_opts)
-    # ℹ️ See the public functions in yt_dlp.YoutubeDL for for other available functions.
+    # ?? See the public functions in yt_dlp.YoutubeDL for for other available functions.
     # Eg: "ydl.download", "ydl.download_with_info_file"
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         # ydl.download(urllist)
@@ -127,7 +152,7 @@ def main(args):
 
 
 # Vars
-debug = False
+debug = True
 
 ydl_opts = {
     'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]',
@@ -135,7 +160,7 @@ ydl_opts = {
     'writedescription': False,
     'postprocessors': [{
         # Embed metadata in video using ffmpeg.
-        # ℹ️ See yt_dlp.postprocessor.FFmpegMetadataPP for the arguments it accepts
+        # ?? See yt_dlp.postprocessor.FFmpegMetadataPP for the arguments it accepts
         'key': 'FFmpegMetadata',
         'add_chapters': True,
         'add_metadata': True,
