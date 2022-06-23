@@ -106,7 +106,9 @@ def main(args):
             try:
                 videoid = ytresult['items'][i]['id']['videoId']
             except:
-                endloop = True
+                print("No more youtube videos in query?")
+                print_debug(ytresult)
+                #endloop = True
 
             for existingvideofilename in existingfilelist:
                 if videoid in existingvideofilename:
@@ -114,12 +116,14 @@ def main(args):
 
             if not duplicatefound and not endloop:
                     urllist.append("https://youtu.be/" + videoid)
+
             else: 
                 print("Skipping video: " + videoid)
 
         try:
             nextpage = ytresult['nextPageToken']
         except:
+            print("No more results")
             endloop = True
 
         print('Number of Videos: ' + str(nvideos) +
@@ -130,7 +134,7 @@ def main(args):
         {'Referer': 'https://www.google.com'})
 
     print(ydl_opts)
-    # ?? See the public functions in yt_dlp.YoutubeDL for for other available functions.
+    # ℹ️ See the public functions in yt_dlp.YoutubeDL for for other available functions.
     # Eg: "ydl.download", "ydl.download_with_info_file"
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         # ydl.download(urllist)
@@ -160,7 +164,7 @@ ydl_opts = {
     'writedescription': False,
     'postprocessors': [{
         # Embed metadata in video using ffmpeg.
-        # ?? See yt_dlp.postprocessor.FFmpegMetadataPP for the arguments it accepts
+        # ℹ️ See yt_dlp.postprocessor.FFmpegMetadataPP for the arguments it accepts
         'key': 'FFmpegMetadata',
         'add_chapters': True,
         'add_metadata': True,
