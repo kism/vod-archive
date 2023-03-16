@@ -25,7 +25,8 @@ def scan_directory(path):
     existingfilelist = []
     for _, _, files in os.walk(path):
         for filename in files:
-            existingfilelist.append(filename)
+            if ".mp4" in filename:
+                existingfilelist.append(filename)
 
     # print_debug("Directory List:")
     # print_debug(existingfilelist)
