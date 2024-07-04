@@ -99,6 +99,7 @@ def get_youtube_video_urls(nvideos: int, existingfilelist: int) -> list:
 
         if not response.ok:
             print(f"All is heck, HTTP: {response.status_code}")
+            print(f"{response.json()}")
             sys.exit(1)
 
         yt_result = response.json()
@@ -123,13 +124,10 @@ def get_youtube_video_urls(nvideos: int, existingfilelist: int) -> list:
             else:
                 print(f'Skipping downloaded video: {yt_result["items"][i]["snippet"]["title"]} [{video_id}]')
 
-        try:
-            next_page = yt_result["next_pageToken"]
-        except KeyError:
-            break
+        next_page = yt_result["nextPageToken"]
 
-        print(f"Number of videos to download: {nvideos}")
-        print(f"URLs: {url_list}")
+    print(f"Number of videos to download: {len(url_list)}")
+    print_debug("url_list", url_list)
 
     return url_list
 
