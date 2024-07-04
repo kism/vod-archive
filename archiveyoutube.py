@@ -57,7 +57,8 @@ def scan_directory(path: str) -> list:
         existingfilelist = []
         for _, _, files in os.walk(path):
             for filename in files:
-                if filename.endswith(".path"):
+                if filename.endswith(".part"):
+                    print(f"Removing partial download: {path}{filename}")
                     os.remove(path + filename)
                 elif filename.endswith(video_extensions):
                     existingfilelist.append(filename)
