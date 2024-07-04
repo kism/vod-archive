@@ -27,13 +27,13 @@ def print_debug(name: str, in_text: any) -> None:
         print(f"\033[93m{name}, {type(in_text)} \033[0m")
         if isinstance(in_text, dict):
             for text in in_text.items():
-                print("\033[93m" + str(text) + "\033[0m")
+                print(f"\033[93m{text}\033[0m")
         elif isinstance(in_text, list):
             for text in in_text:
-                print("\033[93m" + str(text) + "\033[0m")
+                print(f"\033[93m{text}\033[0m")
         else:
-            print("\033[93m" + str(in_text) + "\033[0m")
-        print()
+            print(f"\033[93m{in_text}\033[0m")
+        print("\033[93m---------------------\033[0m")
 
 
 def scan_directory(path: str) -> list:
@@ -47,17 +47,13 @@ def scan_directory(path: str) -> list:
         print_debug("path", path)
 
         # Define the list of video file extensions you're interested in
+        partial_file_extensions = (".part", ".ytdl")
         video_extensions = (".mp4", ".mkv", ".webm")
-
-        # # Use list comprehension to gather files with specified extensions
-        # existingfilelist = [
-        #     filename for _, _, files in os.walk(path) for filename in files if filename.endswith(video_extensions)
-        # ]
 
         existingfilelist = []
         for _, _, files in os.walk(path):
             for filename in files:
-                if filename.endswith(".part"):
+                if filename.endswith(partial_file_extensions):
                     print(f"Removing partial download: {path}{filename}")
                     os.remove(path + filename)
                 elif filename.endswith(video_extensions):
@@ -65,7 +61,7 @@ def scan_directory(path: str) -> list:
 
         print_debug("existingfilelist", existingfilelist)
     else:
-        print("Folder doesnt exist: " + path)
+        print(f"Folder doesnt exist: {path}")
         sys.exit()
 
     return existingfilelist
@@ -93,7 +89,7 @@ def get_youtube_video_urls(nvideos: int, existingfilelist: int) -> list:
             "channelId": args.c,
             "pageToken": next_page,
             "maxResults": str(nextrequest),
-            "order": "viewcount",
+            "order": "relevance",
         }
 
         print_debug("request", request)
@@ -102,14 +98,14 @@ def get_youtube_video_urls(nvideos: int, existingfilelist: int) -> list:
         response = requests.get(request, params=params, timeout=10)
 
         if not response.ok:
-            print("All is heck, HTTP: " + str(response.status_code))
+            print(f"All is heck, HTTP: {response.status_code}")
             sys.exit(1)
 
         yt_result = response.json()
 
-        print_debug("yt_result", yt_result)
+        print_debug("yt_result.items", yt_result["items"])
 
-        for i in range(len(yt_result["items"])):
+        for i in range(len(yt_result["items"])):  # FIXME TODO
             duplicatefound = False
             try:
                 video_id = yt_result["items"][i]["id"]["videoId"]
@@ -125,15 +121,15 @@ def get_youtube_video_urls(nvideos: int, existingfilelist: int) -> list:
                 url_list.append("https://youtu.be/" + video_id)
 
             else:
-                print("Skipping downloaded video: " + video_id)
+                print(f'Skipping downloaded video: {yt_result["items"][i]["snippet"]["title"]} [{video_id}]')
 
         try:
             next_page = yt_result["next_pageToken"]
         except KeyError:
             break
 
-        print("Number of videos to download: " + str(nvideos))
-        print("URLs: " + str(url_list))
+        print(f"Number of videos to download: {nvideos}")
+        print(f"URLs: {url_list}")
 
     return url_list
 
@@ -157,7 +153,7 @@ def download_videos(url_list: list) -> None:
     # Eg: "ydl.download", "ydl.download_with_info_file"
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         for i in range(len(url_list)):
-            print(" Looking at youtube link...")
+            print(f" Looking at youtube link: {url_list[i]}")
 
             info = ydl.extract_info(url_list[i])
 

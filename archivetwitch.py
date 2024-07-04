@@ -1,38 +1,37 @@
 #!/usr/bin/env python3
+"""Download Twitch Clips."""
 
-import json
 import argparse
+
 import requests
-from requests import api
-from requests.models import RequestEncodingMixin
 import yt_dlp
 
 
 def my_hook(d):
-    if d['status'] == 'finished':
-        print('Done downloading, now converting ...')
+    if d["status"] == "finished":
+        print("Done downloading, now converting ...")
 
 
 def print_debug(text):
     if debug:
-        print('\033[93m' + str(text) + '\033[0m')
+        print("\033[93m" + str(text) + "\033[0m")
 
 
 def main(args):
     global ydl_opts
 
     nvideos = 100
-    search = ''
+    search = ""
 
     print_debug(args)
 
     bearertoken = args.k
 
     if args.p:
-        if args.p[-1] != '/':
-            args.p = args.p + '/'
+        if args.p[-1] != "/":
+            args.p = args.p + "/"
 
-        ydl_opts['outtmpl'] = args.p + ydl_opts['outtmpl']
+        ydl_opts["outtmpl"] = args.p + ydl_opts["outtmpl"]
 
     if args.n:
         nvideos = args.n
@@ -53,13 +52,13 @@ def main(args):
         exit(1)
 
     twitchuserjson = response.json()
-    twitchuser = twitchuserjson['data'][0]['id']
+    twitchuser = twitchuserjson["data"][0]["id"]
 
-    print_debug('Twitch user: ' + args.b)
-    print_debug('Twitch ID  : ' + twitchuser)
+    print_debug("Twitch user: " + args.b)
+    print_debug("Twitch ID  : " + twitchuser)
 
     urllist = []
-    nextpage = ''
+    nextpage = ""
     endloop = False
     nvideos = int(nvideos)
 
@@ -73,8 +72,7 @@ def main(args):
             nvideos = 0
 
         request = "https://api.twitch.tv/helix/clips"
-        params = dict(broadcaster_id=twitchuser,
-                      after=nextpage, first=nextrequest)
+        params = dict(broadcaster_id=twitchuser, after=nextpage, first=nextrequest)
         headers = {"Authorization": "Bearer " + bearertoken, "Client-Id": args.c}
 
         print_debug("http request url: " + request + "\n" + str(params))
@@ -94,34 +92,31 @@ def main(args):
 
         print_debug(twitchclipresult)
 
-        print_debug('Items found: ' + len(twitchclipresult['data']))
+        print_debug("Items found: " + len(twitchclipresult["data"]))
 
-        for i in range(len(twitchclipresult['data'])):
-            urllist.append(twitchclipresult['data'][i]['url'])
+        for i in range(len(twitchclipresult["data"])):
+            urllist.append(twitchclipresult["data"][i]["url"])
 
-        print_debug('\n' + str(urllist) + '\n')
+        print_debug("\n" + str(urllist) + "\n")
 
-        nextpage = twitchclipresult['pagination']['cursor']
+        nextpage = twitchclipresult["pagination"]["cursor"]
 
-    print('\nDownloading ' + str(len(urllist)) +
-          ' clips form ' + twitchuser + ' (' + args.b + ')\n')
+    print("\nDownloading " + str(len(urllist)) + " clips form " + twitchuser + " (" + args.b + ")\n")
 
     # Add custom headers
-    yt_dlp.utils.std_headers.update(
-        {'Referer': 'https://www.google.com'})
+    yt_dlp.utils.std_headers.update({"Referer": "https://www.google.com"})
 
     print_debug(ydl_opts)
     # ℹ️ See the public functions in yt_dlp.YoutubeDL for for other available functions.
     # Eg: "ydl.download", "ydl.download_with_info_file"
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-
         for i in range(len(urllist)):
             wat = []
             wat.append(urllist[i])
 
             info = ydl.extract_info(wat[0])
 
-            print('\n' + info['title'] + ' | ' + wat[0])
+            print("\n" + info["title"] + " | " + wat[0])
 
             ydl.download(wat)
 
@@ -132,27 +127,28 @@ def main(args):
 debug = False
 
 ydl_opts = {
-    'outtmpl': '%(upload_date)s %(title)s [%(id)s].%(ext)s',
-    'writedescription': False,
-    'postprocessors': [{
-        # Embed metadata in video using ffmpeg.
-        # ℹ️ See yt_dlp.postprocessor.FFmpegMetadataPP for the arguments it accepts
-        'key': 'FFmpegMetadata',
-        'add_chapters': True,
-        'add_metadata': True,
-    }],
-    'progress_hooks': [my_hook],
+    "outtmpl": "%(upload_date)s %(title)s [%(id)s].%(ext)s",
+    "writedescription": False,
+    "postprocessors": [
+        {
+            # Embed metadata in video using ffmpeg.
+            # ℹ️ See yt_dlp.postprocessor.FFmpegMetadataPP for the arguments it accepts
+            "key": "FFmpegMetadata",
+            "add_chapters": True,
+            "add_metadata": True,
+        }
+    ],
+    "progress_hooks": [my_hook],
 }
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Archive a youtube channel')
-    parser.add_argument('-b', type=str, required=True,
-                        help='Broadcaster login')
-    parser.add_argument('-c', type=str, required=True, help='API Client ID')
-    parser.add_argument('-k', type=str, required=True, help='API bearer token')
-    parser.add_argument('-p', type=str, help='Path')
-    parser.add_argument('-n', type=str, help='Number of videos')
-    parser.add_argument('-s', type=str, help='Search Text')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Archive a youtube channel")
+    parser.add_argument("-b", type=str, required=True, help="Broadcaster login")
+    parser.add_argument("-c", type=str, required=True, help="API Client ID")
+    parser.add_argument("-k", type=str, required=True, help="API bearer token")
+    parser.add_argument("-p", type=str, help="Path")
+    parser.add_argument("-n", type=str, help="Number of videos")
+    parser.add_argument("-s", type=str, help="Search Text")
 
     args = parser.parse_args()
 
