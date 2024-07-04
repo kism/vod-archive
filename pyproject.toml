@@ -1,0 +1,52 @@
+[tool.poetry]
+name = "vod-archive"
+version = "0.1.0"
+description = ""
+authors = ["Kieran Gee <kieran.lost.the.game@gmail.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.9"
+requests = "^2.32.3"
+yt-dlp = "^2024.7.2"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.5.0"
+pylance = "^0.13.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+cache-dir = "~/.cache/ruff"
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+extend-fixable = ["B", "I001"]
+select = ["ALL"] # include all the rules, including new ones
+ignore = [
+  # Modules
+  "DJ",  # Django
+  "PTH", # KG builtin-open is fine
+  "DTZ", # KG no need to specify timezone
+
+  # Specific rules
+  "ANN101", # KG Why define self...
+  "TD002",  # KG Verbose TODO, only I work on this project
+  "TD003",  # KG Verbose TODO, only I work on this project
+  "T201",   # KG Print is fine at this scale
+  "RUF003", # KG The yt-dlp example code comments use a fun character
+]
+
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+docstring-code-line-length = 40

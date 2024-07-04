@@ -1,188 +1,224 @@
 #!/usr/bin/env python3
+"""Downloads videos from a YouTube Channel with yt-dlp."""
 
-import json
 import argparse
-import requests
+import contextlib
 import os
-from requests import api
-from requests.models import RequestEncodingMixin
+import sys
+
+import requests
 import yt_dlp
 
+debug = False
+YT_API_VIDEOS_PER_PAGE = 50
+DEFAULT_PATH = "output"
 
-def my_hook(d):
-    if d['status'] == 'finished':
-        print('Done downloading, now converting ...')
+
+def my_hook(d: any) -> None:
+    """Script that ytdlp runs after downloading or something..."""
+    if d["status"] == "finished":
+        print("Done downloading, now converting ...")
 
 
-def print_debug(text):
+def print_debug(name: str, in_text: any) -> None:
+    """Gross debug print."""
     if debug:
-        print('\033[93m' + str(text) + '\033[0m')
+        print("\033[93m--- DEBUG MESSAGE ---\033[0m")
+        print(f"\033[93m{name}, {type(in_text)} \033[0m")
+        if isinstance(in_text, dict):
+            for text in in_text.items():
+                print("\033[93m" + str(text) + "\033[0m")
+        elif isinstance(in_text, list):
+            for text in in_text:
+                print("\033[93m" + str(text) + "\033[0m")
+        else:
+            print("\033[93m" + str(in_text) + "\033[0m")
+        print()
 
 
-def scan_directory(path):
-    print_debug(path)
+def scan_directory(path: str) -> list:
+    """Get list of files in output folder."""
+    print("🔎 Scanning output folder for existing downloads")
+    if path == (DEFAULT_PATH + os.sep):
+        with contextlib.suppress(FileExistsError):
+            os.makedirs(path)
 
-    existingfilelist = []
-    for _, _, files in os.walk(path):
-        for filename in files:
-            if ".mp4" in filename:
-                existingfilelist.append(filename)
+    if os.path.exists(path):
+        print_debug("path", path)
 
-    # print_debug("Directory List:")
-    # print_debug(existingfilelist)
+        # Define the list of video file extensions you're interested in
+        video_extensions = (".mp4", ".mkv", ".webm")
+
+        # # Use list comprehension to gather files with specified extensions
+        # existingfilelist = [
+        #     filename for _, _, files in os.walk(path) for filename in files if filename.endswith(video_extensions)
+        # ]
+
+        existingfilelist = []
+        for _, _, files in os.walk(path):
+            for filename in files:
+                if filename.endswith(".path"):
+                    os.remove(path + filename)
+                elif filename.endswith(video_extensions):
+                    existingfilelist.append(filename)
+
+        print_debug("existingfilelist", existingfilelist)
+    else:
+        print("Folder doesnt exist: " + path)
+        sys.exit()
+
     return existingfilelist
 
-def main(args):
-    global ydl_opts
 
-    nvideos = 99999
-    search = ''
-
-    print_debug(args)
-
-    if args.k:
-        apikey = args.k
-
-    if args.p:
-        if args.p[-1] != '/':
-            args.p = args.p + '/'
-
-        ydl_opts['outtmpl'] = args.p + ydl_opts['outtmpl']
-
-    if args.n:
-        nvideos = args.n
-
-    if args.s:
-        search = args.s
-
-    if args.w:
-        ydl_opts['writedescription'] = True
-
-    urllist = []
-    nextpage = ''
-    endloop = False
-    nvideos = int(nvideos)
-
-    # Get files in folder
-    existingfilelist = scan_directory(args.p)
-
-    while nvideos > 0 and endloop == False:
+def get_youtube_video_urls(nvideos: int, existingfilelist: int) -> list:
+    """Use the YouTube API to get a list of videos from a YouTube channel."""
+    print("🔎 Getting (searching) list of videos from the channel")
+    url_list = []
+    next_page = ""
+    while nvideos > 0:
         nextrequest = 0
-        if nvideos > 50:
-            nextrequest = 50
-            nvideos = nvideos - 50
+        if nvideos > YT_API_VIDEOS_PER_PAGE:
+            nextrequest = YT_API_VIDEOS_PER_PAGE
+            nvideos = nvideos - YT_API_VIDEOS_PER_PAGE
         else:
             nextrequest = nvideos
             nvideos = 0
 
         request = "https://www.googleapis.com/youtube/v3/search"
-        params = dict(key=apikey, q=search, part="snippet",
-                      channelId=args.c, pageToken=nextpage, maxResults=str(nextrequest), order="viewcount")
+        params = {
+            "key": args.k,
+            "q": args.s,
+            "part": "snippet",
+            "channelId": args.c,
+            "pageToken": next_page,
+            "maxResults": str(nextrequest),
+            "order": "viewcount",
+        }
 
-        print("http request url: " + request + "\n" + str(params))
+        print_debug("request", request)
+        print_debug("params", params)
 
-        try:
-            response = requests.get(request, params=params)
-        except:
-            pass
+        response = requests.get(request, params=params, timeout=10)
 
-        print("http response: " + str(response))
-
-        if response.status_code != 200:
+        if not response.ok:
             print("All is heck, HTTP: " + str(response.status_code))
-            exit(1)
+            sys.exit(1)
 
-        # print_debug(response.json())
+        yt_result = response.json()
 
-        ytresult = response.json()
+        print_debug("yt_result", yt_result)
 
-        for key, value in ytresult.items():
-            #print(key, value)
-            pass
-
-        print()
-
-        for i in range(len(ytresult['items'])):
+        for i in range(len(yt_result["items"])):
             duplicatefound = False
             try:
-                videoid = ytresult['items'][i]['id']['videoId']
-            except:
-                print("No more youtube videos in query?")
-                print_debug(ytresult)
-                #endloop = True
+                video_id = yt_result["items"][i]["id"]["videoId"]
+            except KeyError:
+                print("All videos found?")
+                break
 
             for existingvideofilename in existingfilelist:
-                if videoid in existingvideofilename:
+                if video_id in existingvideofilename:
                     duplicatefound = True
 
-            if not duplicatefound and not endloop:
-                    urllist.append("https://youtu.be/" + videoid)
+            if not duplicatefound:
+                url_list.append("https://youtu.be/" + video_id)
 
-            else: 
-                print("Skipping video: " + videoid)
+            else:
+                print("Skipping downloaded video: " + video_id)
 
         try:
-            nextpage = ytresult['nextPageToken']
-        except:
-            print("No more results")
-            endloop = True
+            next_page = yt_result["next_pageToken"]
+        except KeyError:
+            break
 
-        print('Number of Videos: ' + str(nvideos) +
-              '\nURLs: ' + str(urllist) + '\n')
+        print("Number of videos to download: " + str(nvideos))
+        print("URLs: " + str(url_list))
+
+    return url_list
+
+
+def download_videos(url_list: list) -> None:
+    """Given a list of URLs, download them with yt-dlp."""
+    if len(url_list) == 0:
+        print("No videos to download")
+        return
+
+    print("📺 Downloading Videos")
+    ydl_opts["writedescription"] = args.w
+    ydl_opts["outtmpl"] = args.p + ydl_opts["outtmpl"]
 
     # Add custom headers
-    yt_dlp.utils.std_headers.update(
-        {'Referer': 'https://www.google.com'})
+    yt_dlp.utils.std_headers.update({"Referer": "https://www.google.com"})
 
-    print(ydl_opts)
+    print_debug("ydl_opts", ydl_opts)
+
     # ℹ️ See the public functions in yt_dlp.YoutubeDL for for other available functions.
     # Eg: "ydl.download", "ydl.download_with_info_file"
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        # ydl.download(urllist)
+        for i in range(len(url_list)):
+            print(" Looking at youtube link...")
 
-        for i in range(len(urllist)):
-            wat = []
-            wat.append(urllist[i])
+            info = ydl.extract_info(url_list[i])
 
-            info = ydl.extract_info(wat[0])
+            print(f"Downloading: {info['title']} | {url_list[i]}")
 
-            print('\n' + info['title'] + ' | ' + wat[0])
-
-            ydl.download(wat)
+            ydl.download([url_list[i]])
 
             if args.w:
-                print_debug(info['description'])
+                print_debug('info["description"]', info["description"])
 
+            print("Download complete.")
             print()
 
+    print("Done downloading videos")
 
-# Vars
-debug = True
+
+def main(args: argparse.Namespace) -> None:
+    """Main."""
+    existingfilelist = scan_directory(args.p)
+    url_list = get_youtube_video_urls(args.n, existingfilelist)
+    download_videos(url_list)
+
 
 ydl_opts = {
-    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]',
-    'outtmpl': '%(upload_date)s %(title)s [%(id)s].%(ext)s',
-    'writedescription': False,
-    'postprocessors': [{
-        # Embed metadata in video using ffmpeg.
-        # ℹ️ See yt_dlp.postprocessor.FFmpegMetadataPP for the arguments it accepts
-        'key': 'FFmpegMetadata',
-        'add_chapters': True,
-        'add_metadata': True,
-    }],
-    'progress_hooks': [my_hook],
+    "format": "bestvideo+bestaudio",
+    "merge_output_format": "mkv",
+    "outtmpl": "%(upload_date)s %(title)s [%(id)s].%(ext)s",
+    "writedescription": False,
+    "postprocessors": [
+        {
+            # Embed metadata in video using ffmpeg.
+            # ℹ️ See yt_dlp.postprocessor.FFmpegMetadataPP for the arguments it accepts
+            "key": "FFmpegMetadata",
+            "add_chapters": True,
+            "add_metadata": True,
+        },
+    ],
+    "progress_hooks": [my_hook],
 }
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Archive a youtube channel')
-    parser.add_argument('-c', type=str, required=True, help='Channel ID')
-    parser.add_argument('-k', type=str, required=True, help='API Key')
-    parser.add_argument('-p', type=str, help='Path')
-    parser.add_argument('-n', type=str, help='Number of videos')
-    parser.add_argument('-s', type=str, help='Search Text')
-    parser.add_argument('-w', action='store_true',
-                        help='Write video description to file')
+
+if __name__ == "__main__":
+    print(f"🙋 {sys.argv[0]}")
+
+    parser = argparse.ArgumentParser(description="Archive a youtube channel")
+    parser.add_argument("--debug", action="store_true", help="Debug")
+    parser.add_argument("-c", type=str, required=True, help="Channel ID")
+    parser.add_argument("-k", type=str, required=True, help="API Key")
+    parser.add_argument("-p", type=str, default=DEFAULT_PATH, help="Path")
+    parser.add_argument("-n", type=int, default=99999, help="Number of videos")
+    parser.add_argument("-s", type=str, default="", help="Search Text")
+    parser.add_argument("-w", action="store_true", default=False, help="Write video description to file")
 
     args = parser.parse_args()
+    debug = args.debug
+
+    print_debug("args", args)
+    if args.p[-1] != os.sep:
+        args.p = args.p + os.sep
+
+    print(f"Archiving YouTube channel : https://www.youtube.com/channel/{args.c}")
+    print(f"To location               : {args.p}")
+    print(f"Search query              : {args.s}")
 
     main(args)
