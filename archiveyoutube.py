@@ -221,6 +221,8 @@ if __name__ == "__main__":
 
     args.n += 1  # The query will return the channel as a search result pretty often.
 
+    args.s = f'"{args.s}"' # Hopefully temp
+
     print_debug_var("args", args)
     if args.p[-1] != os.sep:
         args.p = args.p + os.sep
