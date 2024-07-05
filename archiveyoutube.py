@@ -98,7 +98,7 @@ def get_youtube_video_urls(nvideos: int, existingfilelist: int) -> list:
         response = requests.get(request, params=params, timeout=10)
 
         if not response.ok:
-            print(f"All is heck, HTTP: {response.status_code}")
+            print(f"ERROR searching YouTube: HTTP {response.status_code}")
             print(f"{response.json()}")
             sys.exit(1)
 
@@ -106,10 +106,11 @@ def get_youtube_video_urls(nvideos: int, existingfilelist: int) -> list:
 
         print_debug("yt_result.items", yt_result["items"])
 
-        for i in range(len(yt_result["items"])):  # FIXME TODO
+        for item in yt_result["items"]: # TODO, doesnt work with small video limit
             duplicatefound = False
+            print_debug("item", item)
             try:
-                video_id = yt_result["items"][i]["id"]["videoId"]
+                video_id = item["id"]["videoId"]
             except KeyError:
                 print("All videos found?")
                 break
@@ -122,7 +123,7 @@ def get_youtube_video_urls(nvideos: int, existingfilelist: int) -> list:
                 url_list.append("https://youtu.be/" + video_id)
 
             else:
-                print(f'Skipping downloaded video: {yt_result["items"][i]["snippet"]["title"]} [{video_id}]')
+                print(f'Skipping downloaded video: {item["snippet"]["title"]} [{video_id}]')
 
         next_page = yt_result["nextPageToken"]
 
