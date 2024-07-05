@@ -131,7 +131,11 @@ def get_youtube_video_urls(nvideos: int, existingfilelist: int) -> list:
             elif item["id"]["kind"] and item["id"]["kind"] == "youtube#channel":
                 print(f'Found channel name btw: {item["snippet"]["title"]}')
 
-        next_page = yt_result["nextPageToken"]
+        try:
+            next_page = yt_result["nextPageToken"]
+        except KeyError:
+            print("All search results have been looked through.")
+            break
 
     print(f"Number of videos to download: {len(url_list)}")
     print_debug_var("url_list", url_list)
