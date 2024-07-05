@@ -220,7 +220,6 @@ if __name__ == "__main__":
     debug = args.debug
 
     args.n += 1  # The query will return the channel as a search result pretty often.
-    print(args.n)
 
     print_debug_var("args", args)
     if args.p[-1] != os.sep:
