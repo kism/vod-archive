@@ -2,6 +2,7 @@
 settings.yml
 *.log
 output/
+searchresults.json
 
 # This is my script that calls this on my NAS, including my API key
 archiveyoutube.sh

@@ -3,6 +3,7 @@
 
 import argparse
 import contextlib
+import json
 import os
 import sys
 
@@ -20,20 +21,25 @@ def my_hook(d: any) -> None:
         print("Done downloading, now converting ...")
 
 
-def print_debug(name: str, in_text: any) -> None:
-    """Gross debug print."""
+def print_debug_var(name: str, in_text: any) -> None:
+    """Gross var debug print."""
     if debug:
         print("\033[93m--- DEBUG MESSAGE ---\033[0m")
         print(f"\033[93m{name}, {type(in_text)} \033[0m")
         if isinstance(in_text, dict):
             for text in in_text.items():
-                print(f"\033[93m{text}\033[0m")
+                print_debug(text)
         elif isinstance(in_text, list):
             for text in in_text:
-                print(f"\033[93m{text}\033[0m")
+                print_debug(text)
         else:
-            print(f"\033[93m{in_text}\033[0m")
+            print_debug(in_text)
         print("\033[93m---------------------\033[0m")
+
+
+def print_debug(in_text: any) -> None:
+    """Gross debug print."""
+    print(f"\033[93m{in_text}\033[0m")
 
 
 def scan_directory(path: str) -> list:
@@ -44,7 +50,7 @@ def scan_directory(path: str) -> list:
             os.makedirs(path)
 
     if os.path.exists(path):
-        print_debug("path", path)
+        print_debug_var("path", path)
 
         # Define the list of video file extensions you're interested in
         partial_file_extensions = (".part", ".ytdl")
@@ -59,7 +65,7 @@ def scan_directory(path: str) -> list:
                 elif filename.endswith(video_extensions):
                     existingfilelist.append(filename)
 
-        print_debug("existingfilelist", existingfilelist)
+        print_debug_var("existingfilelist", existingfilelist)
     else:
         print(f"Folder doesnt exist: {path}")
         sys.exit()
@@ -92,8 +98,8 @@ def get_youtube_video_urls(nvideos: int, existingfilelist: int) -> list:
             "order": "relevance",
         }
 
-        print_debug("request", request)
-        print_debug("params", params)
+        print_debug_var("request", request)
+        print_debug_var("params", params)
 
         response = requests.get(request, params=params, timeout=10)
 
@@ -104,31 +110,31 @@ def get_youtube_video_urls(nvideos: int, existingfilelist: int) -> list:
 
         yt_result = response.json()
 
-        print_debug("yt_result.items", yt_result["items"])
+        if debug:
+            with open("searchresults.json", "w") as file:
+                file.write(json.dumps(yt_result))
 
-        for item in yt_result["items"]: # TODO, doesnt work with small video limit
-            duplicatefound = False
-            print_debug("item", item)
-            try:
+        for item in yt_result["items"]:
+            duplicate_found = False
+            print_debug_var("item", item)
+            if item["id"]["kind"] == "youtube#video":
                 video_id = item["id"]["videoId"]
-            except KeyError:
-                print("All videos found?")
-                break
 
-            for existingvideofilename in existingfilelist:
-                if video_id in existingvideofilename:
-                    duplicatefound = True
+                duplicate_found = any(video_id in filename for filename in existingfilelist)
 
-            if not duplicatefound:
-                url_list.append("https://youtu.be/" + video_id)
+                if not duplicate_found:
+                    url_list.append("https://youtu.be/" + video_id)
 
-            else:
-                print(f'Skipping downloaded video: {item["snippet"]["title"]} [{video_id}]')
+                else:
+                    print(f'Skipping downloaded video: {item["snippet"]["title"]} [{video_id}]')
+
+            elif item["id"]["kind"] and item["id"]["kind"] == "youtube#channel":
+                print(f'Found channel name btw: {item["snippet"]["title"]}')
 
         next_page = yt_result["nextPageToken"]
 
     print(f"Number of videos to download: {len(url_list)}")
-    print_debug("url_list", url_list)
+    print_debug_var("url_list", url_list)
 
     return url_list
 
@@ -146,7 +152,7 @@ def download_videos(url_list: list) -> None:
     # Add custom headers
     yt_dlp.utils.std_headers.update({"Referer": "https://www.google.com"})
 
-    print_debug("ydl_opts", ydl_opts)
+    print_debug_var("ydl_opts", ydl_opts)
 
     # ℹ️ See the public functions in yt_dlp.YoutubeDL for for other available functions.
     # Eg: "ydl.download", "ydl.download_with_info_file"
@@ -161,7 +167,7 @@ def download_videos(url_list: list) -> None:
             ydl.download([url_list[i]])
 
             if args.w:
-                print_debug('info["description"]', info["description"])
+                print_debug_var('info["description"]', info["description"])
 
             print("Download complete.")
             print()
@@ -209,7 +215,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     debug = args.debug
 
-    print_debug("args", args)
+    args.n += 1  # The query will return the channel as a search result pretty often.
+    print(args.n)
+
+    print_debug_var("args", args)
     if args.p[-1] != os.sep:
         args.p = args.p + os.sep
 
