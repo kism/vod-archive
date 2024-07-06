@@ -161,14 +161,13 @@ def download_videos(url_list: list) -> None:
     # ℹ️ See the public functions in yt_dlp.YoutubeDL for for other available functions.
     # Eg: "ydl.download", "ydl.download_with_info_file"
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        for i in range(len(url_list)):
-            print(f" Looking at youtube link: {url_list[i]}")
+        for yt_url in url_list:
+            print("--- DOWNLOAD ITEM ---")
+            print(f"Looking at youtube link: {yt_url}")
 
-            info = ydl.extract_info(url_list[i])
+            info = ydl.extract_info(yt_url)
 
-            print(f"Downloading: {info['title']} | {url_list[i]}")
-
-            ydl.download([url_list[i]])
+            print(f"Downloading: {info['title']} | {yt_url}")
 
             if args.w:
                 print_debug_var('info["description"]', info["description"])
@@ -221,7 +220,7 @@ if __name__ == "__main__":
 
     args.n += 1  # The query will return the channel as a search result pretty often.
 
-    args.s = f'"{args.s}"' # Hopefully temp
+    args.s = f'"{args.s}"'  # Hopefully temp
 
     print_debug_var("args", args)
     if args.p[-1] != os.sep:
