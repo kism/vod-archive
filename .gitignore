@@ -4,6 +4,9 @@ settings.yml
 output/
 searchresults.json
 
+# No need to lock on this one
+poetry.lock
+
 # This is my script that calls this on my NAS, including my API key
 archiveyoutube.sh
 
