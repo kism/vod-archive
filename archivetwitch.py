@@ -24,7 +24,6 @@ def print_debug(text: str) -> None:
 def main(args: argparse.Namespace) -> None:
     """Main function."""
     nvideos = 100
-    search = ""
 
     print_debug(args)
 
@@ -38,9 +37,6 @@ def main(args: argparse.Namespace) -> None:
 
     if args.n:
         nvideos = args.n
-
-    if args.s:
-        search = args.s
 
     # Get twitch streamer user id
     request = "https://api.twitch.tv/helix/users"
@@ -151,7 +147,6 @@ if __name__ == "__main__":
     parser.add_argument("-k", type=str, required=True, help="API bearer token")
     parser.add_argument("-p", type=str, help="Path")
     parser.add_argument("-n", type=str, help="Number of videos")
-    parser.add_argument("-s", type=str, help="Search Text")
 
     args = parser.parse_args()
 
