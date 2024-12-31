@@ -2,24 +2,27 @@
 """Download Twitch Clips."""
 
 import argparse
+import sys
 
 import requests
 import yt_dlp
 
+YOUTUBE_API_PAGE_SIZE = 50
 
-def my_hook(d):
+def my_hook(d) -> None:
+    """Download hook."""
     if d["status"] == "finished":
         print("Done downloading, now converting ...")
 
 
-def print_debug(text):
+def print_debug(text: str) -> None:
+    """Print debug messages."""
     if debug:
         print("\033[93m" + str(text) + "\033[0m")
 
 
-def main(args):
-    global ydl_opts
-
+def main(args: argparse.Namespace) -> None:
+    """Main function."""
     nvideos = 100
     search = ""
 
@@ -41,15 +44,15 @@ def main(args):
 
     # Get twitch streamer user id
     request = "https://api.twitch.tv/helix/users"
-    params = dict(login=args.b)
+    params = {"login": args.b}
     headers = {"Authorization": "Bearer " + bearertoken, "Client-Id": args.c}
-    response = requests.get(request, params=params, headers=headers)
+    response = requests.get(request, params=params, headers=headers, timeout=10)
 
     print_debug(response.json())
 
-    if response.status_code != 200:
+    if not response.ok:
         print("All is heck, HTTP: " + str(response.status_code))
-        exit(1)
+        sys.exit(1)
 
     twitchuserjson = response.json()
     twitchuser = twitchuserjson["data"][0]["id"]
@@ -62,31 +65,31 @@ def main(args):
     endloop = False
     nvideos = int(nvideos)
 
-    while nvideos > 0 and endloop == False:
+    while nvideos > 0 and not endloop:
         nextrequest = 0
-        if nvideos > 50:
-            nextrequest = 50
-            nvideos = nvideos - 50
+        if nvideos > YOUTUBE_API_PAGE_SIZE:
+            nextrequest = YOUTUBE_API_PAGE_SIZE
+            nvideos = nvideos - YOUTUBE_API_PAGE_SIZE
         else:
             nextrequest = nvideos
             nvideos = 0
 
         request = "https://api.twitch.tv/helix/clips"
-        params = dict(broadcaster_id=twitchuser, after=nextpage, first=nextrequest)
+        params = {"broadcaster_id": twitchuser, "after": nextpage, "first": nextrequest}
         headers = {"Authorization": "Bearer " + bearertoken, "Client-Id": args.c}
 
         print_debug("http request url: " + request + "\n" + str(params))
 
         try:
-            response = requests.get(request, params=params, headers=headers)
+            response = requests.get(request, params=params, headers=headers, timeout=10)
         except:
             endloop = True
 
         print_debug("http response: " + str(response))
 
-        if response.status_code != 200:
+        if not response.ok:
             print("All is heck, HTTP: " + str(response.status_code))
-            exit(1)
+            sys.exit(1)
 
         twitchclipresult = response.json()
 
@@ -95,7 +98,7 @@ def main(args):
         print_debug("Items found: " + len(twitchclipresult["data"]))
 
         for i in range(len(twitchclipresult["data"])):
-            urllist.append(twitchclipresult["data"][i]["url"])
+            urllist.extend([twitchclipresult["data"][i]["url"]])
 
         print_debug("\n" + str(urllist) + "\n")
 
@@ -136,7 +139,7 @@ ydl_opts = {
             "key": "FFmpegMetadata",
             "add_chapters": True,
             "add_metadata": True,
-        }
+        },
     ],
     "progress_hooks": [my_hook],
 }
