@@ -1,22 +1,20 @@
-[tool.poetry]
+[project]
 name = "vod-archive"
 version = "0.1.0"
-description = ""
-authors = ["Kieran Gee <kieran.lost.the.game@gmail.com>"]
+description = "Add your description here"
 readme = "README.md"
-package-mode = false
+requires-python = ">=3.9"
+dependencies = ["requests>=2.32.5", "yt-dlp>=2025.9.5"]
 
-[tool.poetry.dependencies]
-python = "^3.9"
-requests = "*"
-yt-dlp = "*"
+[dependency-groups]
+lint = ["ruff"]
+type = [
+    "mypy>=1.18.1",
+    "types-requests>=2.32.4.20250913",
+]
 
-[tool.poetry.group.dev.dependencies]
-ruff = "*"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.uv]
+default-groups = ["lint"]
 
 [tool.ruff]
 cache-dir = "~/.cache/ruff"
@@ -27,17 +25,16 @@ line-length = 120
 extend-fixable = ["B", "I001"]
 select = ["ALL"] # include all the rules, including new ones
 ignore = [
-  # Modules
-  "DJ",  # Django
-  "PTH", # KG builtin-open is fine
-  "DTZ", # KG no need to specify timezone
+    # Modules
+    "DJ",  # Django
+    "PTH", # KG builtin-open is fine
+    "DTZ", # KG no need to specify timezone
 
-  # Specific rules
-  "ANN101", # KG Why define self...
-  "TD002",  # KG Verbose TODO, only I work on this project
-  "TD003",  # KG Verbose TODO, only I work on this project
-  "T201",   # KG Print is fine at this scale
-  "RUF003", # KG The yt-dlp example code comments use a fun character
+    # Specific rules
+    "TD002",  # KG Verbose TODO, only I work on this project
+    "TD003",  # KG Verbose TODO, only I work on this project
+    "T201",   # KG Print is fine at this scale
+    "RUF003", # KG The yt-dlp example code comments use a fun character
 ]
 
 

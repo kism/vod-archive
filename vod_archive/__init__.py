@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Downloads videos from a YouTube Channel with yt-dlp."""
 
 import argparse
