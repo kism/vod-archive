@@ -2,9 +2,11 @@
 export PATH="/opt/ffmpeg:$PATH"
 cd "$(dirname "$0")"
 
-uv venv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+$HOME/.local/bin/uv venv
 source .venv/bin/activate
-uv sync --upgrade
+$HOME/.local/bin/uv sync --upgrade
 
 
 apikey=AAA
