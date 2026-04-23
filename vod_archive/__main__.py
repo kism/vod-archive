@@ -211,7 +211,7 @@ def main(args: argparse.Namespace) -> None:
 ydl_opts = {
     "format": "bestvideo+bestaudio",
     "merge_output_format": "mkv",
-    "js_runtimes": "deno",
+    "js_runtimes": {"deno": {}},
     "outtmpl": "%(upload_date)s %(title)s [%(id)s].%(ext)s",
     "writedescription": False,
     "postprocessors": [
