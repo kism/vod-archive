@@ -6,7 +6,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 $HOME/.local/bin/uv venv --clear
 source .venv/bin/activate
-$HOME/.local/bin/uv sync --upgrade
+$HOME/.local/bin/uv sync --upgrade --all-extras
 
 
 apikey=AAA
