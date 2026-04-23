@@ -212,6 +212,7 @@ ydl_opts = {
     "format": "bestvideo+bestaudio",
     "merge_output_format": "mkv",
     "js_runtimes": {"deno": {}},
+    "remote_components": "ejs:github",
     "outtmpl": "%(upload_date)s %(title)s [%(id)s].%(ext)s",
     "writedescription": False,
     "postprocessors": [
