@@ -1,4 +1,5 @@
 """Downloads videos from a YouTube Channel with yt-dlp."""
+
 from tracemalloc import start
 
 import argparse
@@ -6,8 +7,11 @@ import contextlib
 import json
 import os
 import sys
+import random
 from datetime import datetime, timedelta
 from typing import Any
+
+from pathlib import Path
 
 import requests
 import yt_dlp
@@ -201,8 +205,10 @@ def main(args: argparse.Namespace) -> None:
     )
     download_videos(url_list)
 
-    # Not for a random time between now and when the min yt time
-    start_date = DATETIME_YT_MIN + timedelta(seconds=int((DATETIME_NOW - DATETIME_YT_MIN).total_seconds() * 0.5))
+    # Pick a random 30-day window between DATETIME_YT_MIN and now
+    start_date = DATETIME_YT_MIN + timedelta(
+        seconds=int((DATETIME_NOW - DATETIME_YT_MIN).total_seconds() * random.random())
+    )
     end_date = start_date + timedelta(days=30)
     url_list = get_youtube_video_urls(args.n, existingfilelist, start_date=start_date, end_date=end_date)
     download_videos(url_list)
@@ -212,6 +218,7 @@ ydl_opts = {
     "format": "bestvideo+bestaudio",
     "merge_output_format": "mkv",
     "js_runtimes": {"deno": {}},
+    "impersonate": "firefox",
     "remote_components": ["ejs:github"],
     "outtmpl": "%(upload_date)s %(title)s [%(id)s].%(ext)s",
     "writedescription": False,
@@ -226,6 +233,9 @@ ydl_opts = {
     ],
     "progress_hooks": [my_hook],
 }
+
+if Path(__name__).parent.joinpath("cookies.txt").exists():
+    ydl_opts["cookiefile"] = str(Path(__name__).parent.joinpath("cookies.txt"))
 
 
 if __name__ == "__main__":
