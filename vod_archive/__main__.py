@@ -197,13 +197,13 @@ def main(args: argparse.Namespace) -> None:
     existingfilelist = scan_directory(args.p)
 
     url_list = get_youtube_video_urls(
-        args.n, existingfilelist, start_date=DATETIME_NOW - timedelta(days=7), end_date=DATETIME_NOW
+        args.n, existingfilelist, start_date=DATETIME_NOW - timedelta(days=30), end_date=DATETIME_NOW
     )
     download_videos(url_list)
 
     # Not for a random time between now and when the min yt time
     start_date = DATETIME_YT_MIN + timedelta(seconds=int((DATETIME_NOW - DATETIME_YT_MIN).total_seconds() * 0.5))
-    end_date = start_date + timedelta(days=7)
+    end_date = start_date + timedelta(days=30)
     url_list = get_youtube_video_urls(args.n, existingfilelist, start_date=start_date, end_date=end_date)
     download_videos(url_list)
 
