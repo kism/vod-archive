@@ -1,10 +1,13 @@
 """Downloads videos from a YouTube Channel with yt-dlp."""
+from tracemalloc import start
 
 import argparse
 import contextlib
 import json
 import os
 import sys
+from datetime import datetime, timedelta
+from typing import Any
 
 import requests
 import yt_dlp
@@ -13,14 +16,17 @@ debug = False
 YT_API_VIDEOS_PER_PAGE = 50
 DEFAULT_PATH = "output"
 
+DATETIME_NOW = datetime.now()
+DATETIME_YT_MIN = datetime(2007, 1, 1)  # About when NPR started
 
-def my_hook(d: any) -> None:
+
+def my_hook(d: Any) -> None:
     """Script that ytdlp runs after downloading or something..."""
     if d["status"] == "finished":
         print("Done downloading, now converting ...")
 
 
-def print_debug_var(name: str, in_text: any) -> None:
+def print_debug_var(name: str, in_text: Any) -> None:
     """Gross var debug print."""
     if debug:
         print("\033[93m--- DEBUG MESSAGE ---\033[0m")
@@ -36,12 +42,12 @@ def print_debug_var(name: str, in_text: any) -> None:
         print("\033[93m---------------------\033[0m")
 
 
-def print_debug(in_text: any) -> None:
+def print_debug(in_text: Any) -> None:
     """Gross debug print."""
     print(f"\033[93m{in_text}\033[0m")
 
 
-def scan_directory(path: str) -> list:
+def scan_directory(path: str) -> list[str]:
     """Get list of files in output folder."""
     print("🔎 Scanning output folder for existing downloads")
     if path == (DEFAULT_PATH + os.sep):
@@ -72,7 +78,12 @@ def scan_directory(path: str) -> list:
     return existingfilelist
 
 
-def get_youtube_video_urls(nvideos: int, existingfilelist: int) -> list:
+def get_youtube_video_urls(
+    nvideos: int,
+    existingfilelist: list[str],
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+) -> list[str]:
     """Use the YouTube API to get a list of videos from a YouTube channel."""
     print("🔎 Getting (searching) list of videos from the channel")
     url_list = []
@@ -96,6 +107,10 @@ def get_youtube_video_urls(nvideos: int, existingfilelist: int) -> list:
             "maxResults": str(nextrequest),
             "order": "relevance",
         }
+
+        if start_date is not None and end_date is not None:
+            params["publishedAfter"] = start_date.isoformat("T") + "Z"
+            params["publishedBefore"] = end_date.isoformat("T") + "Z"
 
         print_debug_var("request", request)
         print_debug_var("params", params)
@@ -180,7 +195,16 @@ def download_videos(url_list: list) -> None:
 def main(args: argparse.Namespace) -> None:
     """Main."""
     existingfilelist = scan_directory(args.p)
-    url_list = get_youtube_video_urls(args.n, existingfilelist)
+
+    url_list = get_youtube_video_urls(
+        args.n, existingfilelist, start_date=DATETIME_NOW - timedelta(days=7), end_date=DATETIME_NOW
+    )
+    download_videos(url_list)
+
+    # Not for a random time between now and when the min yt time
+    start_date = DATETIME_YT_MIN + timedelta(seconds=int((DATETIME_NOW - DATETIME_YT_MIN).total_seconds() * 0.5))
+    end_date = start_date + timedelta(days=7)
+    url_list = get_youtube_video_urls(args.n, existingfilelist, start_date=start_date, end_date=end_date)
     download_videos(url_list)
 
 
