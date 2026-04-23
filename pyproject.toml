@@ -4,7 +4,12 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["requests>=2.32.5", "yt-dlp>=2025.9.5"]
+dependencies = [
+    "curl-cffi>=0.15.0",
+    "deno>=2.7.12",
+    "requests>=2.32.5",
+    "yt-dlp>=2025.9.5",
+]
 
 [dependency-groups]
 lint = ["ruff"]
