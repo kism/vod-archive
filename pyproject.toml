@@ -7,19 +7,15 @@ requires-python = ">=3.11"
 dependencies = [
     "curl-cffi>=0.15.0",
     "deno>=2.7.12",
+    "pydantic>=2.13.3,<3.0.0",
     "requests>=2.32.5",
-    "yt-dlp>=2025.9.5",
+    "yt-dlp>=2026.1.1",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 lint = ["ruff"]
-type = [
-    "mypy>=1.18.1",
-    "types-requests>=2.32.4.20250913",
-]
+type = ["ty>=0.0.32", "types-requests>=2.32.4.20250913"]
 
-[tool.uv]
-default-groups = ["lint"]
 
 [tool.ruff]
 cache-dir = "~/.cache/ruff"
@@ -32,15 +28,21 @@ select = ["ALL"] # include all the rules, including new ones
 ignore = [
     # Modules
     "DJ",  # Django
-    "PTH", # KG builtin-open is fine
-    "DTZ", # KG no need to specify timezone
+    "DTZ", # no need to specify timezone
 
     # Specific rules
-    "TD002",  # KG Verbose TODO, only I work on this project
-    "TD003",  # KG Verbose TODO, only I work on this project
-    "T201",   # KG Print is fine at this scale
-    "RUF003", # KG The yt-dlp example code comments use a fun character
+    "TD002",  # Verbose TODO, only I work on this project
+    "TD003",  # Verbose TODO, only I work on this project
+    "T201",   # Print is fine at this scale
+    "RUF003", # The yt-dlp example code comments use a fun character
+    "COM812", # Formatter conflict
+    "S311",   # No real crypto
+    "ERA001", # Commented out code is whatever
+    "ANN401", # Any is fine for debug/hook functions
 ]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
 
 
 [tool.ruff.lint.pydocstyle]

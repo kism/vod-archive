@@ -1,17 +1,14 @@
 """Downloads videos from a YouTube Channel with yt-dlp."""
 
-from tracemalloc import start
-
 import argparse
 import contextlib
 import json
 import os
-import sys
 import random
+import sys
 from datetime import datetime, timedelta
-from typing import Any
-
 from pathlib import Path
+from typing import Any
 
 import requests
 import yt_dlp
@@ -56,9 +53,9 @@ def scan_directory(path: str) -> list[str]:
     print("🔎 Scanning output folder for existing downloads")
     if path == (DEFAULT_PATH + os.sep):
         with contextlib.suppress(FileExistsError):
-            os.makedirs(path)
+            Path(path).mkdir(parents=True)
 
-    if os.path.exists(path):
+    if Path(path).exists():
         print_debug_var("path", path)
 
         # Define the list of video file extensions you're interested in
@@ -70,7 +67,7 @@ def scan_directory(path: str) -> list[str]:
             for filename in files:
                 if filename.endswith(partial_file_extensions):
                     print(f"Removing partial download: {path}{filename}")
-                    os.remove(path + filename)
+                    Path(path + filename).unlink()
                 elif filename.endswith(video_extensions):
                     existingfilelist.append(filename)
 
@@ -129,7 +126,7 @@ def get_youtube_video_urls(
         yt_result = response.json()
 
         if debug:
-            with open("searchresults.json", "w") as file:
+            with Path("searchresults.json").open("w") as file:
                 file.write(json.dumps(yt_result))
 
         for item in yt_result["items"]:
@@ -144,10 +141,10 @@ def get_youtube_video_urls(
                     url_list.append("https://youtu.be/" + video_id)
 
                 else:
-                    print(f'Skipping downloaded video: {item["snippet"]["title"]} [{video_id}]')
+                    print(f"Skipping downloaded video: {item['snippet']['title']} [{video_id}]")
 
             elif item["id"]["kind"] and item["id"]["kind"] == "youtube#channel":
-                print(f'Found channel name btw: {item["snippet"]["title"]}')
+                print(f"Found channel name btw: {item['snippet']['title']}")
 
         try:
             next_page = yt_result["nextPageToken"]
