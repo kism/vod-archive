@@ -3,7 +3,6 @@
 import argparse
 import contextlib
 import json
-import os
 import random
 import sys
 from datetime import datetime, timedelta
@@ -12,6 +11,8 @@ from typing import Any
 
 import requests
 import yt_dlp
+
+from vod_archive.models import YtApiSearchParams, YtApiSearchResponse, YtDlpProgressHook, YtDlpVideoInfo
 
 debug = False
 YT_API_VIDEOS_PER_PAGE = 50
@@ -23,7 +24,8 @@ DATETIME_YT_MIN = datetime(2007, 1, 1)  # About when NPR started
 
 def my_hook(d: Any) -> None:
     """Script that ytdlp runs after downloading or something..."""
-    if d["status"] == "finished":
+    hook = YtDlpProgressHook.model_validate(d)
+    if hook.status == "finished":
         print("Done downloading, now converting ...")
 
 
@@ -48,14 +50,14 @@ def print_debug(in_text: Any) -> None:
     print(f"\033[93m{in_text}\033[0m")
 
 
-def scan_directory(path: str) -> list[str]:
+def scan_directory(path: Path) -> list[str]:
     """Get list of files in output folder."""
     print("🔎 Scanning output folder for existing downloads")
-    if path == (DEFAULT_PATH + os.sep):
+    if path == Path(DEFAULT_PATH):
         with contextlib.suppress(FileExistsError):
-            Path(path).mkdir(parents=True)
+            path.mkdir(parents=True)
 
-    if Path(path).exists():
+    if path.exists():
         print_debug_var("path", path)
 
         # Define the list of video file extensions you're interested in
@@ -63,13 +65,13 @@ def scan_directory(path: str) -> list[str]:
         video_extensions = (".mp4", ".mkv", ".webm")
 
         existingfilelist = []
-        for _, _, files in os.walk(path):
-            for filename in files:
-                if filename.endswith(partial_file_extensions):
-                    print(f"Removing partial download: {path}{filename}")
-                    Path(path + filename).unlink()
-                elif filename.endswith(video_extensions):
-                    existingfilelist.append(filename)
+        for file in path.rglob("*"):
+            if file.is_file():
+                if file.name.endswith(partial_file_extensions):
+                    print(f"Removing partial download: {file}")
+                    file.unlink()
+                elif file.name.endswith(video_extensions):
+                    existingfilelist.append(file.name)
 
         print_debug_var("existingfilelist", existingfilelist)
     else:
@@ -99,58 +101,51 @@ def get_youtube_video_urls(
             nvideos = 0
 
         request = "https://www.googleapis.com/youtube/v3/search"
-        params = {
-            "key": args.k,
-            "q": args.s,
-            "part": "snippet",
-            "channelId": args.c,
-            "pageToken": next_page,
-            "maxResults": str(nextrequest),
-            "order": "relevance",
-        }
-
-        if start_date is not None and end_date is not None:
-            params["publishedAfter"] = start_date.isoformat("T") + "Z"
-            params["publishedBefore"] = end_date.isoformat("T") + "Z"
+        params = YtApiSearchParams(
+            key=args.k,
+            q=args.s,
+            channel_id=args.c,
+            page_token=next_page,
+            max_results=nextrequest,
+            published_after=start_date.isoformat("T") + "Z" if start_date else None,
+            published_before=end_date.isoformat("T") + "Z" if end_date else None,
+        )
 
         print_debug_var("request", request)
-        print_debug_var("params", params)
+        print_debug_var("params", params.model_dump())
 
-        response = requests.get(request, params=params, timeout=10)
+        response = requests.get(request, params=params.to_request_params(), timeout=10)
 
         if not response.ok:
             print(f"ERROR searching YouTube: HTTP {response.status_code}")
             print(f"{response.json()}")
             sys.exit(1)
 
-        yt_result = response.json()
+        yt_result = YtApiSearchResponse.model_validate(response.json())
 
         if debug:
             with Path("searchresults.json").open("w") as file:
-                file.write(json.dumps(yt_result))
+                file.write(json.dumps(response.json()))
 
-        for item in yt_result["items"]:
-            duplicate_found = False
-            print_debug_var("item", item)
-            if item["id"]["kind"] == "youtube#video":
-                video_id = item["id"]["videoId"]
+        for item in yt_result.items:
+            print_debug_var("item", item.model_dump())
+            if item.id.kind == "youtube#video" and item.id.video_id is not None:
+                video_id = item.id.video_id
 
                 duplicate_found = any(video_id in filename for filename in existingfilelist)
 
                 if not duplicate_found:
                     url_list.append("https://youtu.be/" + video_id)
-
                 else:
-                    print(f"Skipping downloaded video: {item['snippet']['title']} [{video_id}]")
+                    print(f"Skipping downloaded video: {item.snippet.title} [{video_id}]")
 
-            elif item["id"]["kind"] and item["id"]["kind"] == "youtube#channel":
-                print(f"Found channel name btw: {item['snippet']['title']}")
+            elif item.id.kind == "youtube#channel":
+                print(f"Found channel name btw: {item.snippet.title}")
 
-        try:
-            next_page = yt_result["nextPageToken"]
-        except KeyError:
+        if yt_result.next_page_token is None:
             print("All search results have been looked through.")
             break
+        next_page = yt_result.next_page_token
 
     print(f"Number of videos to download: {len(url_list)}")
     print_debug_var("url_list", url_list)
@@ -168,9 +163,6 @@ def download_videos(url_list: list) -> None:
     ydl_opts["writedescription"] = args.w
     ydl_opts["outtmpl"] = args.p + ydl_opts["outtmpl"]
 
-    # Add custom headers
-    yt_dlp.utils.std_headers.update({"Referer": "https://www.google.com"})
-
     print_debug_var("ydl_opts", ydl_opts)
 
     # ℹ️ See the public functions in yt_dlp.YoutubeDL for for other available functions.
@@ -180,12 +172,12 @@ def download_videos(url_list: list) -> None:
             print("--- DOWNLOAD ITEM ---")
             print(f"Looking at youtube link: {yt_url}")
 
-            info = ydl.extract_info(yt_url)
+            info = YtDlpVideoInfo.model_validate(ydl.extract_info(yt_url))
 
-            print(f"Downloading: {info['title']} | {yt_url}")
+            print(f"Downloading: {info.title} | {yt_url}")
 
             if args.w:
-                print_debug_var('info["description"]', info["description"])
+                print_debug_var("info.description", info.description)
 
             print("Download complete.")
             print()
@@ -242,7 +234,7 @@ if __name__ == "__main__":
     parser.add_argument("--debug", action="store_true", help="Debug")
     parser.add_argument("-c", type=str, required=True, help="Channel ID")
     parser.add_argument("-k", type=str, required=True, help="API Key")
-    parser.add_argument("-p", type=str, default=DEFAULT_PATH, help="Path")
+    parser.add_argument("-p", type=Path, default=DEFAULT_PATH, help="Path")
     parser.add_argument("-n", type=int, default=99999, help="Number of videos")
     parser.add_argument("-s", type=str, default="", help="Search Text")
     parser.add_argument("-w", action="store_true", default=False, help="Write video description to file")
@@ -253,10 +245,6 @@ if __name__ == "__main__":
     args.n += 1  # The query will return the channel as a search result pretty often.
 
     args.s = f'"{args.s}"'  # Hopefully temp
-
-    print_debug_var("args", args)
-    if args.p[-1] != os.sep:
-        args.p = args.p + os.sep
 
     print(f"Archiving YouTube channel : https://www.youtube.com/channel/{args.c}")
     print(f"To location               : {args.p}")
