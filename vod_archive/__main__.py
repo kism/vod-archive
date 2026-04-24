@@ -4,12 +4,14 @@ import argparse
 import contextlib
 import json
 import random
+import re
 import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import ffmpeg
 import requests
 import yt_dlp
 
@@ -51,7 +53,7 @@ def print_debug(in_text: Any) -> None:
     print(f"\033[93m{in_text}\033[0m")
 
 
-def scan_directory(path: Path) -> list[str]:
+def scan_directory(path: Path) -> list[Path]:
     """Get list of files in output folder."""
     print("🔎 Scanning output folder for existing downloads")
     if path == Path(DEFAULT_PATH):
@@ -65,14 +67,14 @@ def scan_directory(path: Path) -> list[str]:
         partial_file_extensions = (".part", ".ytdl")
         video_extensions = (".mp4", ".mkv", ".webm")
 
-        existingfilelist = []
+        existingfilelist: list[Path] = []
         for file in path.rglob("*"):
             if file.is_file():
                 if file.name.endswith(partial_file_extensions):
                     print(f"Removing partial download: {file}")
                     file.unlink()
                 elif file.name.endswith(video_extensions):
-                    existingfilelist.append(file.name)
+                    existingfilelist.append(file)
 
         print_debug_var("existingfilelist", existingfilelist)
     else:
@@ -84,7 +86,7 @@ def scan_directory(path: Path) -> list[str]:
 
 def get_youtube_video_urls(
     nvideos: int,
-    existingfilelist: list[str],
+    existingfilelist: list[Path],
     start_date: datetime | None = None,
     end_date: datetime | None = None,
 ) -> list[str]:
@@ -133,7 +135,7 @@ def get_youtube_video_urls(
             if item.id.kind == "youtube#video" and item.id.video_id is not None:
                 video_id = item.id.video_id
 
-                duplicate_found = any(video_id in filename for filename in existingfilelist)
+                duplicate_found = any(video_id in filepath.name for filepath in existingfilelist)
 
                 if not duplicate_found:
                     url_list.append("https://youtu.be/" + video_id)
@@ -188,21 +190,129 @@ def download_videos(url_list: list) -> None:
     print("Done downloading videos")
 
 
+def _normalize_vcodec(vcodec: str) -> str:
+    """Normalize a yt-dlp vcodec string to a comparable ffprobe codec_name."""
+    vcodec = vcodec.lower()
+    if vcodec.startswith(("avc1", "avc3")):
+        return "h264"
+    if vcodec.startswith(("hvc1", "hev1")):
+        return "hevc"
+    if vcodec.startswith("av01"):
+        return "av1"
+    return vcodec.split(".")[0]
+
+
+def _get_best_audio_filesize(formats: list[dict[str, Any]]) -> int:
+    """Return filesize of the best audio-only stream, or 0 if unavailable."""
+    audio = [f for f in formats if f.get("vcodec") in (None, "none") and f.get("acodec") not in (None, "none")]
+    if not audio:
+        return 0
+    best = max(audio, key=lambda f: f.get("filesize") or f.get("filesize_approx") or 0)
+    return best.get("filesize") or best.get("filesize_approx") or 0
+
+
+def _is_premium_match(
+    existing_codec: str, existing_size: int, premium_formats: list[dict[str, Any]], audio_size: int
+) -> bool:
+    """Return True if existing file matches a premium format by codec and approximate filesize."""
+    size_tolerance = 0.30
+    for fmt in premium_formats:
+        if _normalize_vcodec(fmt.get("vcodec", "")) != existing_codec:
+            continue
+        fmt_size = fmt.get("filesize") or fmt.get("filesize_approx") or 0
+        if fmt_size == 0:
+            return True  # No size info — codec match alone is sufficient
+        expected = fmt_size + audio_size
+        if abs(existing_size - expected) / expected <= size_tolerance:
+            return True
+    return False
+
+
+def check_premium_upgrades(existing_files: list[Path]) -> list[str]:
+    """Check existing downloads against premium formats and return URLs needing upgrade."""
+    print("🔍 Checking existing files for premium quality upgrades")
+
+    ydl_check_opts: dict[str, Any] = {
+        "quiet": True,
+        "no_warnings": True,
+        "js_runtimes": ydl_opts.get("js_runtimes", {}),
+        "remote_components": ydl_opts.get("remote_components", []),
+    }
+    if "cookiefile" in ydl_opts:
+        ydl_check_opts["cookiefile"] = ydl_opts["cookiefile"]
+
+    upgrade_urls: list[str] = []
+
+    with yt_dlp.YoutubeDL(ydl_check_opts) as ydl:
+        for file_path in existing_files:
+            match = re.search(r"\[([A-Za-z0-9_-]{11})\]", file_path.stem)
+            if not match:
+                print_debug(f"Could not extract video ID from: {file_path.name}")
+                continue
+
+            video_id = match.group(1)
+            url = f"https://youtu.be/{video_id}"
+
+            try:
+                info = ydl.extract_info(url, download=False)
+            except Exception as e:  # noqa: BLE001
+                print(f"Could not fetch info for {video_id}: {e}")
+                continue
+
+            all_formats: list[dict[str, Any]] = info.get("formats", [])
+            premium_formats = [
+                f for f in all_formats
+                if "Premium" in f.get("format_note", "") and f.get("vcodec") not in (None, "none")
+            ]
+
+            if not premium_formats:
+                print_debug(f"{video_id}: no premium formats available")
+                continue
+
+            audio_size = _get_best_audio_filesize(all_formats)
+
+            try:
+                probe = ffmpeg.probe(str(file_path))
+            except Exception as e:  # noqa: BLE001
+                print(f"ffprobe failed for {file_path.name}: {e}")
+                continue
+
+            video_streams = [s for s in probe.get("streams", []) if s.get("codec_type") == "video"]
+            if not video_streams:
+                print_debug(f"{file_path.name}: no video stream found in ffprobe output")
+                continue
+
+            existing_codec = video_streams[0].get("codec_name", "")
+            existing_size = file_path.stat().st_size
+
+            if _is_premium_match(existing_codec, existing_size, premium_formats, audio_size):
+                print(f"✅ Already premium: {file_path.name}")
+            else:
+                print(f"⬆️  Queued for premium upgrade: {file_path.name}")
+                upgrade_urls.append(url)
+
+    return upgrade_urls
+
+
 def main(args: argparse.Namespace) -> None:
     """Main."""
-    existingfilelist = scan_directory(args.p)
+    existing_files = scan_directory(args.p)
+    upgrade_urls = check_premium_upgrades(existing_files)
+
+    if upgrade_urls:
+        ydl_opts["overwrites"] = True
 
     url_list = get_youtube_video_urls(
-        args.n, existingfilelist, start_date=DATETIME_NOW - timedelta(days=30), end_date=DATETIME_NOW
+        args.n, existing_files, start_date=DATETIME_NOW - timedelta(days=30), end_date=DATETIME_NOW
     )
-    download_videos(url_list)
+    download_videos(upgrade_urls + url_list)
 
     # Pick a random 30-day window between DATETIME_YT_MIN and now
     start_date = DATETIME_YT_MIN + timedelta(
         seconds=int((DATETIME_NOW - DATETIME_YT_MIN).total_seconds() * random.random())
     )
     end_date = start_date + timedelta(days=30)
-    url_list = get_youtube_video_urls(args.n, existingfilelist, start_date=start_date, end_date=end_date)
+    url_list = get_youtube_video_urls(args.n, existing_files, start_date=start_date, end_date=end_date)
     download_videos(url_list)
 
 
