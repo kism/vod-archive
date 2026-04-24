@@ -339,7 +339,9 @@ def main(args: argparse.Namespace) -> None:
     if upgrade_urls:
         ydl_opts["overwrites"] = True
 
+    print("\n --- Downloading Recent Videos ---")
     download_videos(upgrade_urls + url_list_recent)
+    print("\n --- Downloading Random Videos ---")
     download_videos(url_list_random)
 
 
