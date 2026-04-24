@@ -5,6 +5,7 @@ import contextlib
 import json
 import random
 import sys
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -180,7 +181,8 @@ def download_videos(url_list: list) -> None:
             if args.w:
                 print_debug_var("info.description", info.description)
 
-            print("Download complete.")
+            print("Download complete, sleeping a bit ...")
+            time.sleep(random.randint(5, 10))  # Sleep for a random time between downloads to be nice to YouTube
             print()
 
     print("Done downloading videos")
