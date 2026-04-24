@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "curl-cffi>=0.15.0",
+    "curl-cffi>=0.10,<0.15", # yt-dlp doesnt support 0.15 yet
     "deno>=2.7.12",
     "pydantic>=2.13.3,<3.0.0",
     "requests>=2.32.5",
