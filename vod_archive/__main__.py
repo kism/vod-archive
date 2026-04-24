@@ -21,6 +21,7 @@ debug = False
 YT_API_VIDEOS_PER_PAGE = 50
 DEFAULT_PATH = "output"
 
+WINDOW_TO_ARCHIVE = timedelta(days=30)  # Default to archiving videos from the last 30 days
 DATETIME_NOW = datetime.now()
 DATETIME_YT_MIN = datetime(2007, 1, 1)  # About when NPR started
 YOUTUBE_PREMIUM_BITRATE_INTRODUCED_DATE = datetime(2023, 4, 1)
@@ -317,7 +318,7 @@ def main(args: argparse.Namespace) -> None:
         ydl_opts["overwrites"] = True
 
     url_list = get_youtube_video_urls(
-        args.n, existing_files, start_date=DATETIME_NOW - timedelta(days=30), end_date=DATETIME_NOW
+        args.n, existing_files, start_date=DATETIME_NOW - WINDOW_TO_ARCHIVE, end_date=DATETIME_NOW
     )
     download_videos(upgrade_urls + url_list)
 
@@ -325,7 +326,7 @@ def main(args: argparse.Namespace) -> None:
     start_date = DATETIME_YT_MIN + timedelta(
         seconds=int((DATETIME_NOW - DATETIME_YT_MIN).total_seconds() * random.random())
     )
-    end_date = start_date + timedelta(days=30)
+    end_date = start_date + WINDOW_TO_ARCHIVE
     url_list = get_youtube_video_urls(args.n, existing_files, start_date=start_date, end_date=end_date)
     download_videos(url_list)
 
