@@ -91,10 +91,11 @@ def get_youtube_video_urls(
     existingfilelist: list[Path],
     start_date: datetime | None = None,
     end_date: datetime | None = None,
-) -> list[str]:
+) -> tuple[list[str], list[Path]]:
     """Use the YouTube API to get a list of videos from a YouTube channel."""
     print("🔎 Getting (searching) list of videos from the channel")
     url_list = []
+    matched_existing: list[Path] = []
     next_page = ""
     while nvideos > 0:
         nextrequest = 0
@@ -142,6 +143,7 @@ def get_youtube_video_urls(
                 if not duplicate_found:
                     url_list.append("https://youtu.be/" + video_id)
                 else:
+                    matched_existing.extend(fp for fp in existingfilelist if video_id in fp.name)
                     print(f"Skipping downloaded video: {item.snippet.title} [{video_id}]")
 
             elif item.id.kind == "youtube#channel":
@@ -155,7 +157,7 @@ def get_youtube_video_urls(
     print(f"Number of videos to download: {len(url_list)}")
     print_debug_var("url_list", url_list)
 
-    return url_list
+    return url_list, matched_existing
 
 
 def download_videos(url_list: list) -> None:
@@ -312,23 +314,28 @@ def check_premium_upgrades(existing_files: list[Path]) -> list[str]:
 def main(args: argparse.Namespace) -> None:
     """Main."""
     existing_files = scan_directory(args.p)
-    upgrade_urls = check_premium_upgrades(existing_files)
 
-    if upgrade_urls:
-        ydl_opts["overwrites"] = True
-
-    url_list = get_youtube_video_urls(
+    url_list_recent, matched_recent = get_youtube_video_urls(
         args.n, existing_files, start_date=DATETIME_NOW - WINDOW_TO_ARCHIVE, end_date=DATETIME_NOW
     )
-    download_videos(upgrade_urls + url_list)
 
     # Pick a random 30-day window between DATETIME_YT_MIN and now
     start_date = DATETIME_YT_MIN + timedelta(
         seconds=int((DATETIME_NOW - DATETIME_YT_MIN).total_seconds() * random.random())
     )
     end_date = start_date + WINDOW_TO_ARCHIVE
-    url_list = get_youtube_video_urls(args.n, existing_files, start_date=start_date, end_date=end_date)
-    download_videos(url_list)
+    url_list_random, matched_random = get_youtube_video_urls(
+        args.n, existing_files, start_date=start_date, end_date=end_date
+    )
+
+    files_to_check = list(dict.fromkeys(matched_recent + matched_random))  # deduplicated, order preserved
+    upgrade_urls = check_premium_upgrades(files_to_check)
+
+    if upgrade_urls:
+        ydl_opts["overwrites"] = True
+
+    download_videos(upgrade_urls + url_list_recent)
+    download_videos(url_list_random)
 
 
 ydl_opts = {
