@@ -274,7 +274,11 @@ def check_premium_upgrades(existing_files: list[Path]) -> list[str]:
             try:
                 probe = ffmpeg.probe(str(file_path))
             except Exception as e:  # noqa: BLE001
-                print(f"ffprobe failed for {file_path.name}: {e}")
+                if "Invalid data found when processing input" in str(e):
+                    print(f"⬆️  Queued for premium upgrade (corrupt/unreadable): {file_path.name}")
+                    upgrade_urls.append(url)
+                else:
+                    print(f"ffprobe failed for {file_path.name}: {e}")
                 continue
 
             video_streams = [s for s in probe.get("streams", []) if s.get("codec_type") == "video"]
