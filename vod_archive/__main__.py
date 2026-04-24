@@ -161,7 +161,8 @@ def download_videos(url_list: list) -> None:
 
     print("📺 Downloading Videos")
     ydl_opts["writedescription"] = args.w
-    ydl_opts["outtmpl"] = args.p + ydl_opts["outtmpl"]
+
+    ydl_opts["outtmpl"] = str(args.p / ydl_opts["outtmpl"])
 
     print_debug_var("ydl_opts", ydl_opts)
 
