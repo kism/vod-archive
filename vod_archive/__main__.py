@@ -23,6 +23,7 @@ DEFAULT_PATH = "output"
 
 DATETIME_NOW = datetime.now()
 DATETIME_YT_MIN = datetime(2007, 1, 1)  # About when NPR started
+YOUTUBE_PREMIUM_BITRATE_INTRODUCED_DATE = datetime(2023, 4, 1)
 
 
 def my_hook(d: Any) -> None:
@@ -259,9 +260,14 @@ def check_premium_upgrades(existing_files: list[Path]) -> list[str]:
                 print(f"Could not fetch info for {video_id}: {e}")
                 continue
 
+            upload_date_str: str | None = info.get("upload_date")
+            upload_date = datetime.strptime(upload_date_str, "%Y%m%d") if upload_date_str else None
+            eligible_by_date = upload_date is not None and upload_date >= YOUTUBE_PREMIUM_BITRATE_INTRODUCED_DATE
+
             all_formats: list[dict[str, Any]] = info.get("formats", [])
             premium_formats = [
-                f for f in all_formats
+                f
+                for f in all_formats
                 if "Premium" in f.get("format_note", "") and f.get("vcodec") not in (None, "none")
             ]
 
@@ -279,6 +285,10 @@ def check_premium_upgrades(existing_files: list[Path]) -> list[str]:
                     upgrade_urls.append(url)
                 else:
                     print(f"ffprobe failed for {file_path.name}: {e}")
+                continue
+
+            if not eligible_by_date:
+                print_debug(f"{video_id}: uploaded before April 2023, skipping premium check")
                 continue
 
             video_streams = [s for s in probe.get("streams", []) if s.get("codec_type") == "video"]
