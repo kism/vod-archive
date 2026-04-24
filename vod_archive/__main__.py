@@ -34,6 +34,10 @@ def my_hook(d: Any) -> None:
         print("Done downloading, now converting ...")
 
 
+def random_sleep() -> None:
+    """Sleep for a random time between downloads to be nice to YouTube."""
+    time.sleep(random.randint(5, 10))
+
 def print_debug_var(name: str, in_text: Any) -> None:
     """Gross var debug print."""
     if debug:
@@ -188,7 +192,7 @@ def download_videos(url_list: list) -> None:
                 print_debug_var("info.description", info.description)
 
             print("Download complete, sleeping a bit ...")
-            time.sleep(random.randint(5, 10))  # Sleep for a random time between downloads to be nice to YouTube
+            random_sleep()
             print()
 
     print("Done downloading videos")
@@ -258,6 +262,7 @@ def check_premium_upgrades(existing_files: list[Path]) -> list[str]:
             url = f"https://youtu.be/{video_id}"
 
             try:
+                random_sleep()
                 info = ydl.extract_info(url, download=False)
             except Exception as e:  # noqa: BLE001
                 print(f"Could not fetch info for {video_id}: {e}")
