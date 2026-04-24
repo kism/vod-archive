@@ -31,7 +31,7 @@ def my_hook(d: Any) -> None:
     """Script that ytdlp runs after downloading or something..."""
     hook = YtDlpProgressHook.model_validate(d)
     if hook.status == "finished":
-        print("Done downloading, now converting ...")
+        print("\nDone downloading, now converting ...")
 
 
 def random_sleep() -> None:
