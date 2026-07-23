@@ -14,6 +14,7 @@ from typing import Any
 import ffmpeg
 import requests
 import yt_dlp
+from yt_dlp.networking.impersonate import ImpersonateTarget
 
 from vod_archive.models import YtApiSearchParams, YtApiSearchResponse, YtDlpProgressHook, YtDlpVideoInfo
 
@@ -349,7 +350,7 @@ ydl_opts = {
     "format": "bestvideo+bestaudio",
     "merge_output_format": "mkv",
     "js_runtimes": {"deno": {}},
-    # "impersonate": "firefox",
+    "impersonate": ImpersonateTarget("firefox"),
     "remote_components": ["ejs:github"],
     "outtmpl": "%(upload_date)s %(title)s [%(id)s].%(ext)s",
     "writedescription": False,
