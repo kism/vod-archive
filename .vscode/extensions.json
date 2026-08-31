@@ -1,6 +1,5 @@
 {
     "recommendations": [
-        "matangover.mypy",
         "ms-python.python"
     ]
 }
