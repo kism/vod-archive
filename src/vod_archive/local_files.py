@@ -2,7 +2,7 @@
 
 import re
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import ffmpeg
@@ -32,7 +32,7 @@ def scan_directory(path: Path) -> list[Path]:
 
     if not path.exists():
         print(f"Folder doesnt exist: {path}")
-        sys.exit()
+        sys.exit(1)
 
     print_debug_var("path", path)
 
@@ -107,7 +107,7 @@ def _needs_upgrade(file_path: Path, info: dict[str, Any]) -> bool:
         return False
 
     upload_date_str: str | None = info.get("upload_date")
-    upload_date = datetime.strptime(upload_date_str, "%Y%m%d") if upload_date_str else None
+    upload_date = datetime.strptime(upload_date_str, "%Y%m%d").replace(tzinfo=UTC) if upload_date_str else None
     if upload_date is None or upload_date < YOUTUBE_PREMIUM_BITRATE_INTRODUCED_DATE:
         print_debug(f"{file_path.name}: uploaded before April 2023, skipping premium check")
         return False

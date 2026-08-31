@@ -35,7 +35,6 @@ select = ["ALL"] # include all the rules, including new ones
 ignore = [
     # Modules
     "DJ",  # Django
-    "DTZ", # no need to specify timezone
     "CPY", # Copyright in pyproject.toml
 
     # Specific rules

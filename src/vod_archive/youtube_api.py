@@ -1,6 +1,5 @@
 """Discovering videos to archive via the YouTube Data API v3."""
 
-import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -56,8 +55,8 @@ def search_channel(
             channel_id=search.channel_id,
             page_token=next_page,
             max_results=this_request,
-            published_after=start_date.isoformat("T") + "Z" if start_date else None,
-            published_before=end_date.isoformat("T") + "Z" if end_date else None,
+            published_after=start_date.isoformat() if start_date else None,
+            published_before=end_date.isoformat() if end_date else None,
         )
 
         print_debug_var("request", YT_API_SEARCH_URL)
@@ -67,15 +66,17 @@ def search_channel(
 
         if not response.ok:
             print(f"ERROR searching YouTube: HTTP {response.status_code}")
-            print(f"{response.json()}")
+            print(response.text)
             sys.exit(1)
 
         yt_result = YtApiSearchResponse.model_validate(response.json())
 
         if is_debug():
-            Path("searchresults.json").write_text(json.dumps(response.json()))
+            Path("searchresults.json").write_text(response.text, encoding="utf-8")
 
-        _sort_items(yt_result, existing_files, url_list, matched_existing)
+        page = _sort_items(yt_result, existing_files)
+        url_list.extend(page.new_urls)
+        matched_existing.extend(page.existing_files)
 
         if yt_result.next_page_token is None:
             print("All search results have been looked through.")
@@ -88,13 +89,11 @@ def search_channel(
     return SearchResult(url_list, matched_existing)
 
 
-def _sort_items(
-    yt_result: YtApiSearchResponse,
-    existing_files: list[Path],
-    url_list: list[str],
-    matched_existing: list[Path],
-) -> None:
+def _sort_items(yt_result: YtApiSearchResponse, existing_files: list[Path]) -> SearchResult:
     """Split one page of search results into new URLs and already-downloaded files."""
+    url_list: list[str] = []
+    matched_existing: list[Path] = []
+
     for item in yt_result.items:
         print_debug_var("item", item.model_dump())
 
@@ -110,3 +109,5 @@ def _sort_items(
 
         elif item.id.kind == "youtube#channel":
             print(f"Found channel name btw: {item.snippet.title}")
+
+    return SearchResult(url_list, matched_existing)

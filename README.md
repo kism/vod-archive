@@ -20,8 +20,8 @@ uv run vod-archive -k <API_KEY> -c <CHANNEL_ID> [-s <SEARCH>] [-p <OUTPUT_PATH>]
 | `-k` | YouTube Data API v3 key |
 | `-c` | Channel ID — find it in the page source of the channel |
 | `-s` | Search text, quoted for you as an exact phrase |
-| `-p` | Output directory (default `output/`) |
-| `-n` | Max videos per search |
+| `-p` | Output directory (default `output/`, the only path created for you — any other must already exist) |
+| `-n` | Max videos per search (default: effectively unlimited) |
 | `-w` | Write each video's description to a `.description` file |
 | `--debug` | Verbose output, and dump the raw search response to `searchresults.json` |
 

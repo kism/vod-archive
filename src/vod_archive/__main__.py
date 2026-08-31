@@ -1,15 +1,16 @@
-"""Downloads videos from a YouTube Channel with yt-dlp."""
+"""Command line entry point: argument parsing and the three-pass archive run."""
 
 import argparse
 import random
 import sys
-from datetime import datetime, timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .constants import (
     DATETIME_NOW,
     DATETIME_YT_MIN,
     DEFAULT_PATH,
+    MAX_VIDEOS_DEFAULT,
     PROGRAM_NAME,
     PROGRAM_VERSION,
     WINDOW_TO_ARCHIVE,
@@ -19,24 +20,29 @@ from .local_files import check_premium_upgrades, scan_directory
 from .utils import set_debug
 from .youtube_api import ChannelSearch, search_channel
 
+if TYPE_CHECKING:
+    from datetime import datetime
+
 
 def _get_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog=PROGRAM_NAME, description="Archive a youtube channel")
+    parser = argparse.ArgumentParser(
+        prog=PROGRAM_NAME,
+        description="Archive a YouTube channel: the Data API v3 finds videos, yt-dlp downloads them.",
+    )
     parser.add_argument("--version", action="version", version=f"{PROGRAM_NAME} v{PROGRAM_VERSION}")
-    parser.add_argument("--debug", action="store_true", help="Debug")
-    parser.add_argument("-c", type=str, required=True, help="Channel ID")
-    parser.add_argument("-k", type=str, required=True, help="API Key")
-    parser.add_argument("-p", type=Path, default=DEFAULT_PATH, help="Path")
-    parser.add_argument("-n", type=int, default=99999, help="Number of videos")
-    parser.add_argument("-s", type=str, default="", help="Search Text")
-    parser.add_argument("-w", action="store_true", default=False, help="Write video description to file")
+    parser.add_argument("--debug", action="store_true", help="Verbose output, and dump the raw search response")
+    parser.add_argument("-c", type=str, required=True, help="Channel ID, found in the page source of the channel")
+    parser.add_argument("-k", type=str, required=True, help="YouTube Data API v3 key")
+    parser.add_argument("-p", type=Path, default=DEFAULT_PATH, help=f"Output directory (default: {DEFAULT_PATH})")
+    parser.add_argument("-n", type=int, default=MAX_VIDEOS_DEFAULT, help="Max videos per search")
+    parser.add_argument("-s", type=str, default="", help="Search text, quoted for you as an exact phrase")
+    parser.add_argument("-w", action="store_true", help="Write each video's description to a .description file")
     return parser.parse_args()
 
 
 def _random_window() -> tuple[datetime, datetime]:
     """Pick a random WINDOW_TO_ARCHIVE-long window between DATETIME_YT_MIN and now."""
-    elapsed = (DATETIME_NOW - DATETIME_YT_MIN).total_seconds()
-    start_date = DATETIME_YT_MIN + timedelta(seconds=int(elapsed * random.random()))
+    start_date = DATETIME_YT_MIN + (DATETIME_NOW - DATETIME_YT_MIN) * random.random()
     return start_date, start_date + WINDOW_TO_ARCHIVE
 
 
