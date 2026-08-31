@@ -5,7 +5,7 @@ description = "Archive a YouTube channel with the YouTube Data API v3 and yt-dlp
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "curl-cffi>=0.10,<0.15", # yt-dlp doesnt support 0.15 yet
+    "curl-cffi>=0.10,<0.17", # yt-dlp doesnt support 0.15 yet
     "deno>=2.7.12",
     "pydantic>=2.13.3,<3.0.0",
     "requests>=2.32.5",
