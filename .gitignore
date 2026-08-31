@@ -3,6 +3,7 @@ settings.yml
 *.log
 output/
 searchresults.json
+cookies.txt
 
 # No need to lock on this one
 poetry.lock

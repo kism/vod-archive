@@ -1,29 +1,32 @@
 [project]
 name = "vod-archive"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.2.0"
+description = "Archive a YouTube channel with the YouTube Data API v3 and yt-dlp"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
-    "curl-cffi>=0.15.0",
+    "curl-cffi>=0.10,<0.15", # yt-dlp doesnt support 0.15 yet
     "deno>=2.7.12",
+    "pydantic>=2.13.3,<3.0.0",
     "requests>=2.32.5",
-    "yt-dlp>=2025.9.5",
+    "typed-ffmpeg>=4.1",
+    "yt-dlp>=2026.1.1",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 lint = ["ruff"]
-type = [
-    "mypy>=1.18.1",
-    "types-requests>=2.32.4.20250913",
-]
+type = ["ty>=0.0.32", "types-requests>=2.32.4.20250913"]
+test = ["pytest>=8.0", "coverage>=7.6"]
 
-[tool.uv]
-default-groups = ["lint"]
+[project.scripts]
+vod-archive = "vod_archive.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.12.3,<0.13.0"]
+build-backend = "uv_build"
 
 [tool.ruff]
 cache-dir = "~/.cache/ruff"
-target-version = "py311"
 line-length = 120
 
 [tool.ruff.lint]
@@ -32,16 +35,35 @@ select = ["ALL"] # include all the rules, including new ones
 ignore = [
     # Modules
     "DJ",  # Django
-    "PTH", # KG builtin-open is fine
-    "DTZ", # KG no need to specify timezone
+    "DTZ", # no need to specify timezone
+    "CPY", # Copyright in pyproject.toml
 
     # Specific rules
-    "TD002",  # KG Verbose TODO, only I work on this project
-    "TD003",  # KG Verbose TODO, only I work on this project
-    "T201",   # KG Print is fine at this scale
-    "RUF003", # KG The yt-dlp example code comments use a fun character
+    "TD002",  # Verbose TODO, only I work on this project
+    "TD003",  # Verbose TODO, only I work on this project
+    "T201",   # Print is fine at this scale
+    "RUF003", # The yt-dlp example code comments use a fun character
+    "COM812", # Formatter conflict
+    "S311",   # No real crypto
+    "ERA001", # Commented out code is whatever
+    "ANN401", # Any is fine for debug/hook functions
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = [
+    "ANN", # Don't care about annotations in tests
+    "D",   # Don't care about docstrings in tests
+    "S101", # asserts allowed in tests
+    "SLF001", # Accessing private members is needed for testing
+    "PLR2004", # Magic values are the point of a test
+    "TC", # Type-checking blocks are noise in tests
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.ruff.lint.pylint]
+max-returns = 8 # Guard clause chains read better than nesting
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -51,3 +73,15 @@ quote-style = "double"
 indent-style = "space"
 docstring-code-format = true
 docstring-code-line-length = 40
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+command_line = ".venv/bin/pytest -q"
+source = ["vod_archive"]
+
+[tool.coverage.report]
+show_missing = true
+format = "text"
+sort = "-Miss"

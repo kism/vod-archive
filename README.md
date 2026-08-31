@@ -1,26 +1,39 @@
-## vod-archive
+# vod-archive
 
-Scripts for pulling youtube and twitch videos
+Archives a YouTube channel: the YouTube Data API v3 finds the videos, [yt-dlp](https://github.com/yt-dlp/yt-dlp) downloads them.
 
-Needs a youtube data v3 api key
+Each run does three things — grabs anything new from the last 30 days, backfills a random 30-day slice of the channel's history, and re-downloads any existing file that YouTube now offers in a higher premium bitrate.
 
-### Prerequisites
+## Prerequisites
 
-`pip3 install -r requirements.txt`
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+- `ffmpeg` and `ffprobe` on `PATH`
 
-Make sure you also have ffmpeg installed and in your path
+## Run
 
-### Examples
+```bash
+uv run vod-archive -k <API_KEY> -c <CHANNEL_ID> [-s <SEARCH>] [-p <OUTPUT_PATH>] [-n <MAX>] [-w] [--debug]
+```
 
-Archive top 100 videos of a youtube channel
+| Flag | Meaning |
+|------|---------|
+| `-k` | YouTube Data API v3 key |
+| `-c` | Channel ID — find it in the page source of the channel |
+| `-s` | Search text, quoted for you as an exact phrase |
+| `-p` | Output directory (default `output/`) |
+| `-n` | Max videos per search |
+| `-w` | Write each video's description to a `.description` file |
+| `--debug` | Verbose output, and dump the raw search response to `searchresults.json` |
 
-`archiveyoutube.py -k <api key> -c <youtube channel id> -n 100 -p /path/to/target/dir`
+Drop a `cookies.txt` in the working directory to reach age-restricted or private videos.
 
-To get chennel id, open the channel page in your browser and either
+[archiveyoutube_example.sh](archiveyoutube_example.sh) is a real invocation for the NPR and KEXP channels.
 
-- Open the devtools, in the console enter `console.log(ytInitialData.metadata.channelMetadataRenderer.externalId)`
-- Look for "externalId" in the page source of a channel
+## Check / Test
 
-Archive all Tiny Desk Concerts from the NPR channel
-
-`archiveyoutube.py -k <api key> -c "UC4eYXhJI4-7wSWc8UNRwD4A" -s "Tiny Desk" -w -p /path/to/target/dir`
+```bash
+uv run ruff check .   # lint, rules live in pyproject.toml
+uv run ruff format .  # format
+uv run ty check .     # type check
+uv run pytest         # test
+```

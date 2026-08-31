@@ -1,0 +1,62 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+Downloads videos from a YouTube channel: YouTube Data API v3 for discovery, yt-dlp for the download. See [README.md](README.md) for the user-facing flags.
+
+## Commands
+
+```bash
+uv sync --all-extras   # setup; uv manages the venv and the Python toolchain
+uv run vod-archive -k <API_KEY> -c <CHANNEL_ID> [-s <SEARCH>] [-p <OUT_DIR>] [-n <MAX>] [-w] [--debug]
+
+uv run ruff check . && uv run ruff format . && uv run ty check .
+uv run pytest                       # all tests
+uv run pytest tests/test_local_files.py::test_is_premium_match   # one test
+uv run coverage run && uv run coverage report   # config in pyproject.toml
+```
+
+`ffmpeg`/`ffprobe` must be on `PATH` — [archiveyoutube_example.sh](archiveyoutube_example.sh) prepends `/opt/ffmpeg` and holds the real NPR/KEXP invocations.
+
+Src layout with the `uv_build` backend, so the package is only importable once `uv sync` has installed it into `.venv`. Always drive it through `uv run`; a bare `python -m vod_archive` from the repo root will not find the package.
+
+## Module split
+
+| Module | Owns |
+|---|---|
+| [`__main__.py`](src/vod_archive/__main__.py) | Argparse and the `main()` orchestration; the only place that reads `args` |
+| [`constants.py`](src/vod_archive/constants.py) | Program metadata plus every tunable — date windows, extensions, API URL |
+| [`youtube_api.py`](src/vod_archive/youtube_api.py) | Searching the channel, paginating, splitting hits into new vs already-downloaded |
+| [`downloader.py`](src/vod_archive/downloader.py) | yt-dlp option construction and the download loop |
+| [`local_files.py`](src/vod_archive/local_files.py) | Everything about files already on disk: scanning, and premium-upgrade detection |
+| [`models.py`](src/vod_archive/models.py) | Pydantic v2 models for the API responses and yt-dlp payloads |
+| [`utils.py`](src/vod_archive/utils.py) | Debug printing and `random_sleep()` |
+
+There are no globals for CLI state: `main()` builds a `ChannelSearch` and a `ydl_opts` dict and passes them down. `utils.set_debug()` is the one piece of process-wide state, set once in `main()`.
+
+## Non-obvious behaviour
+
+**Each run does three passes** ([`main()`](src/vod_archive/__main__.py)):
+1. Recent — the last `WINDOW_TO_ARCHIVE` (30 days).
+2. Backfill — a random 30-day slice between `DATETIME_YT_MIN` (2007) and now, so repeated runs gradually walk the channel's history.
+3. Premium upgrade — search hits that already exist on disk get re-probed and queued for re-download if stale.
+
+**Premium upgrade detection** ([`_needs_upgrade()`](src/vod_archive/local_files.py)): pulls the video ID back out of the filename with `VIDEO_ID_PATTERN`, then compares yt-dlp's `Premium` formats against `ffmpeg.probe` (typed-ffmpeg, imported as `ffmpeg`) on the local file — codec must match and filesize must be within `PREMIUM_SIZE_TOLERANCE` of premium video + best audio. Only applies to uploads after `YOUTUBE_PREMIUM_BITRATE_INTRODUCED_DATE` (2023-04-01). Files that fail ffprobe as corrupt are queued unconditionally. Any queued upgrade sets `overwrites=True` for the whole run.
+
+**Duplicate detection is substring matching** — a video counts as downloaded if its 11-char ID appears anywhere in a filename under `-p`.
+
+**`-n` is incremented by 1** because the channel itself usually appears as a search result. `-s` is wrapped in literal quotes (marked "Hopefully temp"). The API paginates at 50/page; `search_channel()` loops for you.
+
+**`cookies.txt` is resolved relative to the working directory**, not the package — see `COOKIES_FILE`.
+
+**Partial downloads (`.part`, `.ytdl`) are deleted on startup** — resume is deliberately not supported.
+
+**`random_sleep()` (5–10s) runs between every download and every metadata probe** to be gentle on YouTube. Long runs are slow by design; don't optimise it away.
+
+## Conventions
+
+Python 3.14, line length 120, Google docstrings. Ruff is `select = ["ALL"]` with a small ignore list in [pyproject.toml](pyproject.toml) — new rules land on you by default, so prefer fixing over ignoring, and comment the reason like the existing entries do. `requires-python` drives ruff's target version, which is why annotation-only imports sit in `if TYPE_CHECKING:` blocks (TC003).
+
+Pydantic models use `populate_by_name=True` and alias camelCase API fields to snake_case; the yt-dlp models use `extra="allow"` since they only pin the subset actually read.
+
+[AGENTS.md](AGENTS.md) is a symlink to this file.
