@@ -1,5 +1,8 @@
 # vod-archive
 
+[![Check (Ruff)](https://github.com/kism/vod-archive/actions/workflows/check.yml/badge.svg)](https://github.com/kism/vod-archive/actions/workflows/check.yml)
+[![Type Check (ty)](https://github.com/kism/vod-archive/actions/workflows/check_types.yml/badge.svg)](https://github.com/kism/vod-archive/actions/workflows/check_types.yml)
+
 Archives a YouTube channel: the YouTube Data API v3 finds the videos, [yt-dlp](https://github.com/yt-dlp/yt-dlp) downloads them.
 
 Each run does three things — grabs anything new from the last 30 days, backfills a random 30-day slice of the channel's history, and re-downloads any existing file that YouTube now offers in a higher premium bitrate.
