@@ -2,57 +2,61 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Downloads videos from a YouTube channel: YouTube Data API v3 for discovery, yt-dlp for the actual download.
+Downloads videos from a YouTube channel: YouTube Data API v3 for discovery, yt-dlp for the download. See [README.md](README.md) for the user-facing flags.
 
 ## Commands
 
 ```bash
-# Setup (UV, not pip/poetry)
-uv venv --clear && source .venv/bin/activate && uv sync --upgrade --all-extras
+uv sync --all-extras   # setup; uv manages the venv and the Python toolchain
+uv run vod-archive -k <API_KEY> -c <CHANNEL_ID> [-s <SEARCH>] [-p <OUT_DIR>] [-n <MAX>] [-w] [--debug]
 
-# Run
-python -m vod_archive -k <API_KEY> -c <CHANNEL_ID> [-s <SEARCH>] [-p <OUT_DIR>] [-n <MAX>] [-w] [--debug]
-
-# Lint / format / type check (all installed into .venv)
-ruff check . && ruff format . && ty check .
+uv run ruff check . && uv run ruff format . && uv run ty check .
+uv run pytest                       # all tests
+uv run pytest tests/test_local_files.py::test_is_premium_match   # one test
+uv run coverage run && uv run coverage report   # config in pyproject.toml
 ```
 
-`ffmpeg`/`ffprobe` must be on PATH — see [archiveyoutube_example.sh](archiveyoutube_example.sh), which prepends `/opt/ffmpeg` and holds real invocations for the NPR and KEXP channels.
+`ffmpeg`/`ffprobe` must be on `PATH` — [archiveyoutube_example.sh](archiveyoutube_example.sh) prepends `/opt/ffmpeg` and holds the real NPR/KEXP invocations.
 
-There are no tests.
+Src layout with the `uv_build` backend, so the package is only importable once `uv sync` has installed it into `.venv`. Always drive it through `uv run`; a bare `python -m vod_archive` from the repo root will not find the package.
 
-## Layout
+## Module split
 
-- [vod_archive/__main__.py](vod_archive/__main__.py) — everything: CLI, API pagination, download loop, premium-upgrade check.
-- [vod_archive/models.py](vod_archive/models.py) — Pydantic v2 models for the API responses and yt-dlp payloads.
+| Module | Owns |
+|---|---|
+| [`__main__.py`](src/vod_archive/__main__.py) | Argparse and the `main()` orchestration; the only place that reads `args` |
+| [`constants.py`](src/vod_archive/constants.py) | Program metadata plus every tunable — date windows, extensions, API URL |
+| [`youtube_api.py`](src/vod_archive/youtube_api.py) | Searching the channel, paginating, splitting hits into new vs already-downloaded |
+| [`downloader.py`](src/vod_archive/downloader.py) | yt-dlp option construction and the download loop |
+| [`local_files.py`](src/vod_archive/local_files.py) | Everything about files already on disk: scanning, and premium-upgrade detection |
+| [`models.py`](src/vod_archive/models.py) | Pydantic v2 models for the API responses and yt-dlp payloads |
+| [`utils.py`](src/vod_archive/utils.py) | Debug printing and `random_sleep()` |
+
+There are no globals for CLI state: `main()` builds a `ChannelSearch` and a `ydl_opts` dict and passes them down. `utils.set_debug()` is the one piece of process-wide state, set once in `main()`.
 
 ## Non-obvious behaviour
 
-**`args` and `debug` are module globals**, assigned only inside the `if __name__ == "__main__"` block. `get_youtube_video_urls()` and `download_videos()` read `args` directly rather than taking parameters, so they cannot be called from anywhere but that entry point without setting the global first.
+**Each run does three passes** ([`main()`](src/vod_archive/__main__.py)):
+1. Recent — the last `WINDOW_TO_ARCHIVE` (30 days).
+2. Backfill — a random 30-day slice between `DATETIME_YT_MIN` (2007) and now, so repeated runs gradually walk the channel's history.
+3. Premium upgrade — search hits that already exist on disk get re-probed and queued for re-download if stale.
 
-**`ydl_opts` is a mutated module global.** `download_videos()` writes `outtmpl` (prefixing the output path) and `writedescription` into it; `main()` sets `overwrites` when upgrades are queued. It's defined *below* the functions that use it, before the `__main__` block.
+**Premium upgrade detection** ([`_needs_upgrade()`](src/vod_archive/local_files.py)): pulls the video ID back out of the filename with `VIDEO_ID_PATTERN`, then compares yt-dlp's `Premium` formats against `ffmpeg.probe` (typed-ffmpeg, imported as `ffmpeg`) on the local file — codec must match and filesize must be within `PREMIUM_SIZE_TOLERANCE` of premium video + best audio. Only applies to uploads after `YOUTUBE_PREMIUM_BITRATE_INTRODUCED_DATE` (2023-04-01). Files that fail ffprobe as corrupt are queued unconditionally. Any queued upgrade sets `overwrites=True` for the whole run.
 
-**Each run does two archive passes plus an upgrade pass** ([`main()`](vod_archive/__main__.py#L320)):
-1. Recent window — the last `WINDOW_TO_ARCHIVE` (30 days).
-2. Random window — a random 30-day slice between `DATETIME_YT_MIN` (2007) and now, so repeated runs gradually backfill the channel's history.
-3. Premium upgrade — search hits that already exist on disk are re-probed and re-downloaded if they look stale.
+**Duplicate detection is substring matching** — a video counts as downloaded if its 11-char ID appears anywhere in a filename under `-p`.
 
-**Premium upgrade check** ([`check_premium_upgrades()`](vod_archive/__main__.py#L240)): pulls the video ID back out of the filename with a `\[([A-Za-z0-9_-]{11})\]` regex, compares yt-dlp's `Premium` formats against `ffmpeg.probe` (typed-ffmpeg, imported as `ffmpeg`) on the local file — codec match plus filesize within 30% of premium video + best audio. Only applies to uploads after `YOUTUBE_PREMIUM_BITRATE_INTRODUCED_DATE` (2023-04-01); files that fail ffprobe as corrupt are queued unconditionally. Any queued upgrade flips `overwrites=True` for the whole run.
+**`-n` is incremented by 1** because the channel itself usually appears as a search result. `-s` is wrapped in literal quotes (marked "Hopefully temp"). The API paginates at 50/page; `search_channel()` loops for you.
 
-**Duplicate detection is substring matching** — a video is "already downloaded" if its 11-char ID appears anywhere in an existing filename under `-p`.
-
-**`-n` is incremented by 1** because the channel itself usually shows up as a search result. `-s` is wrapped in literal quotes (`"Hopefully temp"`). API paginates at 50/page; `get_youtube_video_urls()` loops for you.
-
-**`cookies.txt` is looked up via `Path(__name__).parent`**, which resolves to the *current working directory*, not the package directory. Drop it next to wherever you invoke from for age-restricted videos.
+**`cookies.txt` is resolved relative to the working directory**, not the package — see `COOKIES_FILE`.
 
 **Partial downloads (`.part`, `.ytdl`) are deleted on startup** — resume is deliberately not supported.
 
-**`random_sleep()` (5–10s) runs between every download and every probe** to be gentle on YouTube. Long runs are slow by design; don't "optimise" it away.
+**`random_sleep()` (5–10s) runs between every download and every metadata probe** to be gentle on YouTube. Long runs are slow by design; don't optimise it away.
 
 ## Conventions
 
-Python 3.11+, line length 120, Google docstrings. Ruff is `select = ["ALL"]` with a small ignore list in [pyproject.toml](pyproject.toml) — new rules land on you by default; prefer fixing over adding to the ignore list, and if you do add one, comment why like the existing entries do. Pydantic models use `populate_by_name=True` and alias camelCase API fields to snake_case; the yt-dlp models use `extra="allow"` since they only pin the subset actually read.
+Python 3.14, line length 120, Google docstrings. Ruff is `select = ["ALL"]` with a small ignore list in [pyproject.toml](pyproject.toml) — new rules land on you by default, so prefer fixing over ignoring, and comment the reason like the existing entries do. `requires-python` drives ruff's target version, which is why annotation-only imports sit in `if TYPE_CHECKING:` blocks (TC003).
 
-## Known stale
+Pydantic models use `populate_by_name=True` and alias camelCase API fields to snake_case; the yt-dlp models use `extra="allow"` since they only pin the subset actually read.
 
-- [.github/workflows/ruff.yml](.github/workflows/ruff.yml) lints `archiveyoutube.py`, a file that no longer exists, and only on `main`/`test` (work happens on `develop`). It's effectively a no-op CI job.
+[AGENTS.md](AGENTS.md) is a symlink to this file.

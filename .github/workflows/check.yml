@@ -5,10 +5,12 @@ on:
   push:
     branches:
       - main
+      - develop
       - test
     paths-ignore:
       - "**/README*"
       - ".github/workflows/check_types.yml"
+      - ".github/workflows/test.yml"
 
 jobs:
   check:
@@ -35,4 +37,4 @@ jobs:
         run: uv build
 
       - name: Run the built project to check it works
-        run: .venv/bin/my-cool-app --help
+        run: uv run vod-archive --help

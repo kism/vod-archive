@@ -1,7 +1,7 @@
 [project]
 name = "vod-archive"
 version = "0.1.0"
-description = "Add your description here"
+description = "Archive a YouTube channel with the YouTube Data API v3 and yt-dlp"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
@@ -16,13 +16,14 @@ dependencies = [
 [project.optional-dependencies]
 lint = ["ruff"]
 type = ["ty>=0.0.32", "types-requests>=2.32.4.20250913"]
+test = ["pytest>=8.0", "coverage>=7.6"]
+
+[project.scripts]
+vod-archive = "vod_archive.__main__:main"
 
 [build-system]
 requires = ["uv_build>=0.12.3,<0.13.0"]
 build-backend = "uv_build"
-
-[project.scripts]
-my-cool-app = "vod_archive:__main__.main"
 
 [tool.ruff]
 cache-dir = "~/.cache/ruff"
@@ -48,9 +49,21 @@ ignore = [
     "ANN401", # Any is fine for debug/hook functions
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = [
+    "ANN", # Don't care about annotations in tests
+    "D",   # Don't care about docstrings in tests
+    "S101", # asserts allowed in tests
+    "SLF001", # Accessing private members is needed for testing
+    "PLR2004", # Magic values are the point of a test
+    "TC", # Type-checking blocks are noise in tests
+]
+
 [tool.ruff.lint.mccabe]
 max-complexity = 12
 
+[tool.ruff.lint.pylint]
+max-returns = 8 # Guard clause chains read better than nesting
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -60,3 +73,15 @@ quote-style = "double"
 indent-style = "space"
 docstring-code-format = true
 docstring-code-line-length = 40
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+command_line = ".venv/bin/pytest -q"
+source = ["vod_archive"]
+
+[tool.coverage.report]
+show_missing = true
+format = "text"
+sort = "-Miss"
