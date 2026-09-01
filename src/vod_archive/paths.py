@@ -18,8 +18,9 @@ from .utils import console
 if TYPE_CHECKING:
     from pathlib import Path
 
-# Straight and curly double/single quotes — dropped outright, never substituted.
-_QUOTE_CHARS = "\"'“”‘’"  # " ' “ ” ‘ ’
+# Straight double/single quotes plus their curly ("smart quote") counterparts — dropped
+# outright rather than substituted, unlike yt-dlp's own sanitizing.
+_QUOTE_CHARS = "\"'\u2018\u2019\u201c\u201d"
 _QUOTE_TRANSLATION = dict.fromkeys(map(ord, _QUOTE_CHARS), None)
 
 

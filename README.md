@@ -7,7 +7,9 @@ Archives a YouTube channel: the YouTube Data API v3 finds the videos, [yt-dlp](h
 
 Each run does three things — grabs anything new from the last 30 days, backfills a random 30-day slice of the channel's history, and re-downloads any existing file that YouTube now offers in a higher premium bitrate.
 
-Every downloaded file gets a `.quality.json` sidecar recording its current quality and the best quality YouTube offered at last check. It's a cache: once a file is confirmed up to date it isn't re-probed for 7 days, saving time and API hits, and it stops a flaky cookie session from re-flagging (and re-downloading over) an already-confirmed file just because it briefly couldn't see Premium formats.
+Every downloaded file gets a `.quality.json` sidecar recording its current quality and the best quality YouTube offered at last check. It's a cache: once a file is confirmed up to date it isn't re-probed for a while, saving time and API hits, and it stops a flaky cookie session from re-flagging (and re-downloading over) an already-confirmed file just because it briefly couldn't see Premium formats.
+
+Filenames are sanitized with [pathvalidate](https://github.com/thombashi/pathvalidate) on top of yt-dlp's own sanitizing, so quote characters are dropped rather than kept. Every run re-sanitizes existing files too, so anything downloaded before this existed gets renamed to match (its `.quality.json`/`.description` sidecars are renamed along with it).
 
 ## Prerequisites
 
