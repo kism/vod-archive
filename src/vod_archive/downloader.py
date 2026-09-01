@@ -8,8 +8,9 @@ from yt_dlp.networking.impersonate import ImpersonateTarget
 
 from .constants import COOKIES_FILE, OUTPUT_TEMPLATE
 from .models import YtDlpProgressHook, YtDlpVideoInfo
+from .paths import rename_to_sanitized
 from .quality import evaluate_quality, save_quality_cache
-from .utils import print_debug, print_debug_var, random_sleep
+from .utils import console, print_debug, print_debug_var, random_sleep
 
 # Shared by both the download and the metadata-probe clients.
 YDL_BASE_OPTS: dict[str, Any] = {
@@ -25,7 +26,7 @@ def _progress_hook(d: Any) -> None:
     """Script that ytdlp runs after downloading or something..."""
     hook = YtDlpProgressHook.model_validate(d)
     if hook.status == "finished":
-        print("\nDone downloading, now converting ...")
+        console.print("\nDone downloading, now converting ...")
 
 
 def build_download_opts(output_path: Path, *, write_description: bool, overwrites: bool = False) -> dict[str, Any]:
@@ -75,6 +76,8 @@ def _save_post_download_quality(ydl: yt_dlp.YoutubeDL, raw_info: dict[str, Any])
         print_debug(f"Could not locate downloaded file for quality cache: {file_path}")
         return
 
+    file_path = rename_to_sanitized(file_path)
+
     _, cache = evaluate_quality(file_path, video_id, raw_info)
     save_quality_cache(file_path, cache)
 
@@ -92,10 +95,10 @@ def download_videos(
     `url_list` by the caller, told apart here so the log says which is which.
     """
     if len(url_list) == 0:
-        print("No videos to download")
+        console.print("No videos to download")
         return
 
-    print("📺 Downloading Videos")
+    console.print("📺 Downloading Videos", style="bold cyan")
     print_debug_var("ydl_opts", ydl_opts)
 
     # ℹ️ See the public functions in yt_dlp.YoutubeDL for for other available functions.
@@ -103,21 +106,21 @@ def download_videos(
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         for yt_url in url_list:
             reason = "premium upgrade" if yt_url in upgrade_urls else "new"
-            print("--- DOWNLOAD ITEM ---")
-            print(f"Looking at youtube link: {yt_url} ({reason})")
+            console.print("--- DOWNLOAD ITEM ---", style="dim")
+            console.print(f"Looking at youtube link: {yt_url} ({reason})")
 
             raw_info = ydl.extract_info(yt_url)
             info = YtDlpVideoInfo.model_validate(raw_info)
 
-            print(f"Downloading ({reason}): {info.title} | {yt_url}")
+            console.print(f"Downloading ({reason}): {info.title} | {yt_url}", style="bold")
 
             if write_description:
                 print_debug_var("info.description", info.description)
 
             _save_post_download_quality(ydl, raw_info)
 
-            print("Download complete, sleeping a bit ...")
+            console.print("Download complete, sleeping a bit ...", style="dim")
             random_sleep()
-            print()
+            console.print()
 
-    print("Done downloading videos")
+    console.print("Done downloading videos", style="bold green")

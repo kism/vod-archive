@@ -17,7 +17,7 @@ from .constants import (
 )
 from .downloader import build_download_opts, download_videos
 from .local_files import check_premium_upgrades, scan_directory
-from .utils import set_debug
+from .utils import console, set_debug
 from .youtube_api import ChannelSearch, search_channel
 
 if TYPE_CHECKING:
@@ -48,7 +48,7 @@ def _random_window() -> tuple[datetime, datetime]:
 
 def main() -> None:
     """Archive recent videos, backfill a random slice of history, and upgrade stale downloads."""
-    print(f"🙋 {sys.argv[0]}")
+    console.print(f"🙋 {sys.argv[0]}", style="bold")
     args = _get_args()
     set_debug(enabled=args.debug)
 
@@ -59,9 +59,9 @@ def main() -> None:
         max_videos=args.n + 1,  # The query will return the channel as a search result pretty often.
     )
 
-    print(f"Archiving YouTube channel : https://www.youtube.com/channel/{search.channel_id}")
-    print(f"To location               : {args.p}")
-    print(f"Search query              : {search.query}")
+    console.print(f"Archiving YouTube channel : https://www.youtube.com/channel/{search.channel_id}")
+    console.print(f"To location               : {args.p}")
+    console.print(f"Search query              : {search.query}")
 
     existing_files = scan_directory(args.p)
 
@@ -76,9 +76,9 @@ def main() -> None:
     ydl_opts = build_download_opts(args.p, write_description=args.w, overwrites=bool(upgrade_urls))
     upgrade_url_set = frozenset(upgrade_urls)
 
-    print("\n --- Downloading Recent Videos ---")
+    console.print("\n --- Downloading Recent Videos ---", style="bold cyan")
     download_videos(upgrade_urls + recent.new_urls, ydl_opts, write_description=args.w, upgrade_urls=upgrade_url_set)
-    print("\n --- Downloading Random Videos ---")
+    console.print("\n --- Downloading Random Videos ---", style="bold cyan")
     download_videos(backfill.new_urls, ydl_opts, write_description=args.w, upgrade_urls=upgrade_url_set)
 
 

@@ -1,8 +1,14 @@
-"""Debug printing and rate limiting helpers."""
+"""Debug printing, the shared rich console, and rate limiting helpers."""
 
 import random
 import time
 from typing import Any
+
+from rich.console import Console
+
+# Titles and filenames routinely contain literal `[brackets]` (yt-dlp's `[video_id]`, timestamps,
+# etc.) — markup stays off everywhere so none of that is ever parsed as a rich markup tag.
+console = Console(markup=False)
 
 _debug = False
 
@@ -16,7 +22,7 @@ def set_debug(*, enabled: bool) -> None:
 def print_debug(in_text: Any) -> None:
     """Gross debug print."""
     if _debug:
-        print(f"\033[93m{in_text}\033[0m")
+        console.print(in_text, style="yellow")
 
 
 def print_debug_var(name: str, in_text: Any) -> None:
@@ -24,8 +30,8 @@ def print_debug_var(name: str, in_text: Any) -> None:
     if not _debug:
         return
 
-    print("\033[93m--- DEBUG MESSAGE ---\033[0m")
-    print(f"\033[93m{name}, {type(in_text)} \033[0m")
+    console.print("--- DEBUG MESSAGE ---", style="yellow")
+    console.print(f"{name}, {type(in_text)} ", style="yellow")
     if isinstance(in_text, dict):
         for text in in_text.items():
             print_debug(text)
@@ -34,7 +40,7 @@ def print_debug_var(name: str, in_text: Any) -> None:
             print_debug(text)
     else:
         print_debug(in_text)
-    print("\033[93m---------------------\033[0m")
+    console.print("---------------------", style="yellow")
 
 
 def random_sleep() -> None:

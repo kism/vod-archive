@@ -42,7 +42,6 @@ ignore = [
     # Specific rules
     "TD002",  # Verbose TODO, only I work on this project
     "TD003",  # Verbose TODO, only I work on this project
-    "T201",   # Print is fine at this scale
     "RUF003", # The yt-dlp example code comments use a fun character
     "COM812", # Formatter conflict
     "S311",   # No real crypto

@@ -14,7 +14,7 @@ import ffmpeg
 
 from .constants import QUALITY_CACHE_TTL, YOUTUBE_PREMIUM_BITRATE_INTRODUCED_DATE
 from .models import QualityCache, QualityInfo
-from .utils import print_debug
+from .utils import console, print_debug
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -154,7 +154,7 @@ def evaluate_quality(file_path: Path, video_id: str, info: dict[str, Any]) -> tu
     current = probe_current_quality(file_path)
 
     if current is None:
-        print(f"⬆️  Queued for premium upgrade (corrupt/unreadable): {file_path.name}")
+        console.print(f"⬆️  Queued for premium upgrade (corrupt/unreadable): {file_path.name}", style="yellow")
         cache = QualityCache(video_id=video_id, checked_at=now, up_to_date=False, best_available=best_available)
         return True, cache
 
@@ -184,7 +184,10 @@ def evaluate_quality(file_path: Path, video_id: str, info: dict[str, Any]) -> tu
 
     audio_size = get_best_audio_filesize(all_formats)
     up_to_date = is_premium_match(current.vcodec or "", file_path.stat().st_size, premium_formats, audio_size)
-    print(f"✅ Already premium: {file_path.name}" if up_to_date else f"⬆️  Queued for premium upgrade: {file_path.name}")
+    if up_to_date:
+        console.print(f"✅ Already premium: {file_path.name}", style="green")
+    else:
+        console.print(f"⬆️  Queued for premium upgrade: {file_path.name}", style="yellow")
 
     cache = QualityCache(
         video_id=video_id, checked_at=now, up_to_date=up_to_date, current=current, best_available=best_available

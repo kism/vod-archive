@@ -9,7 +9,7 @@ import requests
 
 from .constants import YT_API_SEARCH_URL, YT_API_VIDEOS_PER_PAGE
 from .models import YtApiSearchParams, YtApiSearchResponse
-from .utils import is_debug, print_debug_var
+from .utils import console, is_debug, print_debug_var
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -39,7 +39,7 @@ def search_channel(
     end_date: datetime | None = None,
 ) -> SearchResult:
     """Use the YouTube API to get a list of videos from a YouTube channel."""
-    print("🔎 Getting (searching) list of videos from the channel")
+    console.print("🔎 Getting (searching) list of videos from the channel", style="bold cyan")
     url_list: list[str] = []
     matched_existing: list[Path] = []
     next_page = ""
@@ -65,8 +65,8 @@ def search_channel(
         response = requests.get(YT_API_SEARCH_URL, params=params.to_request_params(), timeout=10)
 
         if not response.ok:
-            print(f"ERROR searching YouTube: HTTP {response.status_code}")
-            print(response.text)
+            console.print(f"ERROR searching YouTube: HTTP {response.status_code}", style="bold red")
+            console.print(response.text, style="bold red")
             sys.exit(1)
 
         yt_result = YtApiSearchResponse.model_validate(response.json())
@@ -79,11 +79,11 @@ def search_channel(
         matched_existing.extend(page.existing_files)
 
         if yt_result.next_page_token is None:
-            print("All search results have been looked through.")
+            console.print("All search results have been looked through.")
             break
         next_page = yt_result.next_page_token
 
-    print(f"Number of videos to download: {len(url_list)}")
+    console.print(f"Number of videos to download: {len(url_list)}")
     print_debug_var("url_list", url_list)
 
     return SearchResult(url_list, matched_existing)
@@ -103,11 +103,11 @@ def _sort_items(yt_result: YtApiSearchResponse, existing_files: list[Path]) -> S
 
             if already_downloaded:
                 matched_existing.extend(already_downloaded)
-                print(f"Skipping downloaded video: {item.snippet.title} [{video_id}]")
+                console.print(f"Skipping downloaded video: {item.snippet.title} [{video_id}]")
             else:
                 url_list.append("https://youtu.be/" + video_id)
 
         elif item.id.kind == "youtube#channel":
-            print(f"Found channel name btw: {item.snippet.title}")
+            console.print(f"Found channel name btw: {item.snippet.title}")
 
     return SearchResult(url_list, matched_existing)
