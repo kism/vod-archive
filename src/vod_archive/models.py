@@ -1,5 +1,7 @@
 """Pydantic models for YouTube API and yt-dlp data structures."""
 
+from datetime import datetime  # noqa: TC003 — pydantic needs the real type at class-build time, not just for hints
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -75,3 +77,31 @@ class YtDlpVideoInfo(BaseModel):
 
     title: str
     description: str | None = None
+
+
+class QualityInfo(BaseModel):
+    """A video/audio quality description in yt-dlp's own terms — format id, codecs, size."""
+
+    format_id: str | None = None
+    vcodec: str | None = None
+    acodec: str | None = None
+    height: int | None = None
+    filesize: int | None = None
+    is_premium: bool = False
+
+
+class QualityCache(BaseModel):
+    """The `.quality.json` sidecar: a downloaded file's quality, cached to avoid re-probing YouTube.
+
+    `applicable=False` marks an upload that predates Premium formats entirely (see
+    `YOUTUBE_PREMIUM_BITRATE_INTRODUCED_DATE`) — that never changes, so it's never re-checked.
+    Otherwise a `up_to_date=True` verdict is trusted for `QUALITY_CACHE_TTL` before being
+    re-probed; a `False` verdict is always re-checked next run.
+    """
+
+    video_id: str
+    checked_at: datetime
+    up_to_date: bool
+    applicable: bool = True
+    current: QualityInfo | None = None
+    best_available: QualityInfo | None = None

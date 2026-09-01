@@ -22,6 +22,7 @@ WINDOW_TO_ARCHIVE = timedelta(days=30)  # Default to archiving videos from the l
 DATETIME_NOW = datetime.now(UTC)
 DATETIME_YT_MIN = datetime(2007, 1, 1, tzinfo=UTC)  # About when NPR started
 YOUTUBE_PREMIUM_BITRATE_INTRODUCED_DATE = datetime(2023, 4, 1, tzinfo=UTC)
+QUALITY_CACHE_TTL = timedelta(days=90)  # How long a confirmed "already best quality" verdict is trusted unchecked
 
 VIDEO_EXTENSIONS = (".mp4", ".mkv", ".webm")
 PARTIAL_FILE_EXTENSIONS = (".part", ".ytdl")

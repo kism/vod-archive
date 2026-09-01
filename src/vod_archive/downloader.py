@@ -1,16 +1,15 @@
 """yt-dlp options and the download loop."""
 
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 
 import yt_dlp
 from yt_dlp.networking.impersonate import ImpersonateTarget
 
 from .constants import COOKIES_FILE, OUTPUT_TEMPLATE
 from .models import YtDlpProgressHook, YtDlpVideoInfo
-from .utils import print_debug_var, random_sleep
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from .quality import evaluate_quality, save_quality_cache
+from .utils import print_debug, print_debug_var, random_sleep
 
 # Shared by both the download and the metadata-probe clients.
 YDL_BASE_OPTS: dict[str, Any] = {
@@ -57,6 +56,29 @@ def build_probe_opts() -> dict[str, Any]:
     return {**YDL_BASE_OPTS, "quiet": True, "no_warnings": True}
 
 
+def _save_post_download_quality(ydl: yt_dlp.YoutubeDL, raw_info: dict[str, Any]) -> None:
+    """Cache the quality of a file straight after downloading it, from the info already fetched.
+
+    Reuses the same `raw_info` yt-dlp just returned — it carries the full formats list already,
+    so this costs no extra network hit — and runs it through the same comparison
+    `check_premium_upgrades` uses, so a Premium format that silently didn't get selected (a
+    flaky cookie session, say) is recorded as not up to date instead of cached as a false pass.
+    """
+    video_id = raw_info.get("id")
+    if not video_id:
+        print_debug("No video id in downloaded info, skipping quality cache")
+        return
+
+    merge_format = "mkv"  # Matches merge_output_format in build_download_opts
+    file_path = Path(ydl.prepare_filename(raw_info)).with_suffix(f".{merge_format}")
+    if not file_path.exists():
+        print_debug(f"Could not locate downloaded file for quality cache: {file_path}")
+        return
+
+    _, cache = evaluate_quality(file_path, video_id, raw_info)
+    save_quality_cache(file_path, cache)
+
+
 def download_videos(url_list: list[str], ydl_opts: dict[str, Any], *, write_description: bool) -> None:
     """Given a list of URLs, download them with yt-dlp."""
     if len(url_list) == 0:
@@ -73,12 +95,15 @@ def download_videos(url_list: list[str], ydl_opts: dict[str, Any], *, write_desc
             print("--- DOWNLOAD ITEM ---")
             print(f"Looking at youtube link: {yt_url}")
 
-            info = YtDlpVideoInfo.model_validate(ydl.extract_info(yt_url))
+            raw_info = ydl.extract_info(yt_url)
+            info = YtDlpVideoInfo.model_validate(raw_info)
 
             print(f"Downloading: {info.title} | {yt_url}")
 
             if write_description:
                 print_debug_var("info.description", info.description)
+
+            _save_post_download_quality(ydl, raw_info)
 
             print("Download complete, sleeping a bit ...")
             random_sleep()

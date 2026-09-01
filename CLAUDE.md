@@ -12,7 +12,7 @@ uv run vod-archive -k <API_KEY> -c <CHANNEL_ID> [-s <SEARCH>] [-p <OUT_DIR>] [-n
 
 uv run ruff check . && uv run ruff format . && uv run ty check .
 uv run pytest                       # all tests
-uv run pytest tests/test_local_files.py::test_is_premium_match   # one test
+uv run pytest tests/test_quality.py::test_is_premium_match   # one test
 uv run coverage run && uv run coverage report   # config in pyproject.toml
 ```
 
@@ -29,7 +29,8 @@ Src layout with the `uv_build` backend, so the package is only importable once `
 | [`youtube_api.py`](src/vod_archive/youtube_api.py) | Searching the channel, paginating, splitting hits into new vs already-downloaded |
 | [`downloader.py`](src/vod_archive/downloader.py) | yt-dlp option construction and the download loop |
 | [`local_files.py`](src/vod_archive/local_files.py) | Everything about files already on disk: scanning, and premium-upgrade detection |
-| [`models.py`](src/vod_archive/models.py) | Pydantic v2 models for the API responses and yt-dlp payloads |
+| [`quality.py`](src/vod_archive/quality.py) | Deriving, comparing, and caching per-video quality — the `.quality.json` sidecar |
+| [`models.py`](src/vod_archive/models.py) | Pydantic v2 models for the API responses, yt-dlp payloads, and the quality cache |
 | [`utils.py`](src/vod_archive/utils.py) | Debug printing and `random_sleep()` |
 
 There are no globals for CLI state: `main()` builds a `ChannelSearch` and a `ydl_opts` dict and passes them down. `utils.set_debug()` is the one piece of process-wide state, set once in `main()`.
@@ -41,7 +42,9 @@ There are no globals for CLI state: `main()` builds a `ChannelSearch` and a `ydl
 2. Backfill — a random 30-day slice between `DATETIME_YT_MIN` (2007) and now, so repeated runs gradually walk the channel's history.
 3. Premium upgrade — search hits that already exist on disk get re-probed and queued for re-download if stale.
 
-**Premium upgrade detection** ([`_needs_upgrade()`](src/vod_archive/local_files.py)): pulls the video ID back out of the filename with `VIDEO_ID_PATTERN`, then compares yt-dlp's `Premium` formats against `ffmpeg.probe` (typed-ffmpeg, imported as `ffmpeg`) on the local file — codec must match and filesize must be within `PREMIUM_SIZE_TOLERANCE` of premium video + best audio. Only applies to uploads after `YOUTUBE_PREMIUM_BITRATE_INTRODUCED_DATE` (2023-04-01). Files that fail ffprobe as corrupt are queued unconditionally. Any queued upgrade sets `overwrites=True` for the whole run.
+**Premium upgrade detection** ([`evaluate_quality()`](src/vod_archive/quality.py)): pulls the video ID back out of the filename with `VIDEO_ID_PATTERN`, then compares yt-dlp's `Premium` formats against `ffmpeg.probe` (typed-ffmpeg, imported as `ffmpeg`) on the local file — codec must match and filesize must be within `PREMIUM_SIZE_TOLERANCE` of premium video + best audio. Only applies to uploads after `YOUTUBE_PREMIUM_BITRATE_INTRODUCED_DATE` (2023-04-01). Files that fail ffprobe as corrupt are queued unconditionally. Any queued upgrade sets `overwrites=True` for the whole run.
+
+**The `.quality.json` sidecar** ([`quality.py`](src/vod_archive/quality.py)): written next to every downloaded file (`foo.mkv` → `foo.quality.json`), recording its current codec/height/filesize (from `ffmpeg.probe`, so it backfills fine for files that predate this cache), the best quality yt-dlp reported available at last check (flagging `Premium` formats), and whether the file was up to date. `check_premium_upgrades()` trusts a cached `up_to_date=True` verdict for `QUALITY_CACHE_TTL` (7 days) instead of re-probing, and trusts `applicable=False` (upload predates Premium formats) forever — `is_cache_valid()` is the one place that decides. A `False` verdict is always re-checked. This is what keeps a flaky cookie session — one that momentarily can't see Premium formats — from re-flagging an already-confirmed file: the stale probe simply never happens, so it can't trigger a re-download that overwrites a good file with a worse one. `download_videos()` writes the sidecar itself right after each download, reusing the same `info` yt-dlp already fetched (no extra network hit).
 
 **Duplicate detection is substring matching** — a video counts as downloaded if its 11-char ID appears anywhere in a filename under `-p`.
 
