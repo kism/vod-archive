@@ -1,7 +1,7 @@
 # vod-archive
 
-[![Check (Ruff)](https://github.com/kism/vod-archive/actions/workflows/check.yml/badge.svg)](https://github.com/kism/vod-archive/actions/workflows/check.yml)
-[![Type Check (ty)](https://github.com/kism/vod-archive/actions/workflows/check_types.yml/badge.svg)](https://github.com/kism/vod-archive/actions/workflows/check_types.yml)
+[![Lint](https://github.com/kism/vod-archive/actions/workflows/check.yml/badge.svg)](https://github.com/kism/vod-archive/actions/workflows/check.yml)
+[![Type Check](https://github.com/kism/vod-archive/actions/workflows/check_types.yml/badge.svg)](https://github.com/kism/vod-archive/actions/workflows/check_types.yml)
 
 Archives a YouTube channel: the YouTube Data API v3 finds the videos, [yt-dlp](https://github.com/yt-dlp/yt-dlp) downloads them.
 
