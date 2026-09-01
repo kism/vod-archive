@@ -74,11 +74,12 @@ def main() -> None:
     upgrade_urls = check_premium_upgrades(files_to_check)
 
     ydl_opts = build_download_opts(args.p, write_description=args.w, overwrites=bool(upgrade_urls))
+    upgrade_url_set = frozenset(upgrade_urls)
 
     print("\n --- Downloading Recent Videos ---")
-    download_videos(upgrade_urls + recent.new_urls, ydl_opts, write_description=args.w)
+    download_videos(upgrade_urls + recent.new_urls, ydl_opts, write_description=args.w, upgrade_urls=upgrade_url_set)
     print("\n --- Downloading Random Videos ---")
-    download_videos(backfill.new_urls, ydl_opts, write_description=args.w)
+    download_videos(backfill.new_urls, ydl_opts, write_description=args.w, upgrade_urls=upgrade_url_set)
 
 
 if __name__ == "__main__":

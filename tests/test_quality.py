@@ -144,7 +144,7 @@ def test_is_cache_valid_up_to_date_within_ttl():
 
 
 def test_is_cache_valid_up_to_date_but_expired():
-    stale = QualityCache(video_id="x", checked_at=datetime.now(UTC) - timedelta(days=30), up_to_date=True)
+    stale = QualityCache(video_id="x", checked_at=datetime.now(UTC) - timedelta(days=365), up_to_date=True)
     assert not is_cache_valid(stale)
 
 

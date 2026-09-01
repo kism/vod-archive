@@ -79,8 +79,18 @@ def _save_post_download_quality(ydl: yt_dlp.YoutubeDL, raw_info: dict[str, Any])
     save_quality_cache(file_path, cache)
 
 
-def download_videos(url_list: list[str], ydl_opts: dict[str, Any], *, write_description: bool) -> None:
-    """Given a list of URLs, download them with yt-dlp."""
+def download_videos(
+    url_list: list[str],
+    ydl_opts: dict[str, Any],
+    *,
+    write_description: bool,
+    upgrade_urls: frozenset[str] = frozenset(),
+) -> None:
+    """Given a list of URLs, download them with yt-dlp.
+
+    `upgrade_urls` is just for the printed label — it's the same set already folded into
+    `url_list` by the caller, told apart here so the log says which is which.
+    """
     if len(url_list) == 0:
         print("No videos to download")
         return
@@ -92,13 +102,14 @@ def download_videos(url_list: list[str], ydl_opts: dict[str, Any], *, write_desc
     # Eg: "ydl.download", "ydl.download_with_info_file"
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         for yt_url in url_list:
+            reason = "premium upgrade" if yt_url in upgrade_urls else "new"
             print("--- DOWNLOAD ITEM ---")
-            print(f"Looking at youtube link: {yt_url}")
+            print(f"Looking at youtube link: {yt_url} ({reason})")
 
             raw_info = ydl.extract_info(yt_url)
             info = YtDlpVideoInfo.model_validate(raw_info)
 
-            print(f"Downloading: {info.title} | {yt_url}")
+            print(f"Downloading ({reason}): {info.title} | {yt_url}")
 
             if write_description:
                 print_debug_var("info.description", info.description)
