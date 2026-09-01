@@ -62,6 +62,10 @@ def normalize_vcodec(vcodec: str) -> str:
         return "hevc"
     if vcodec.startswith("av01"):
         return "av1"
+    if vcodec.startswith(("vp9", "vp09")):
+        return "vp9"  # yt-dlp reports the fourcc "vp09.00.10.08"; ffprobe just says "vp9"
+    if vcodec.startswith(("vp8", "vp08")):
+        return "vp8"
     return vcodec.split(".")[0]
 
 

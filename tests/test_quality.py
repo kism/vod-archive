@@ -30,6 +30,9 @@ from vod_archive.quality import (
         ("av01.0.08M.08", "av1"),
         ("VP9.2", "vp9"),
         ("vp9", "vp9"),
+        ("vp09.00.10.08", "vp9"),  # yt-dlp's fourcc form — the actual bug that motivated this test
+        ("vp8", "vp8"),
+        ("vp08.00.10.08", "vp8"),
     ],
 )
 def test_normalize_vcodec(vcodec, expected):
