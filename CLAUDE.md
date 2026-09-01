@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Downloads videos from a YouTube channel: YouTube Data API v3 for discovery, yt-dlp for the download. See [README.md](README.md) for the user-facing flags.
+Downloads videos from a YouTube channel: YouTube Data API v3 for discovery, yt-dlp for the download. See [README.md](README.md) for the user-facing flags and [README_DEV.md](README_DEV.md) for dev setup.
 
 ## Commands
 

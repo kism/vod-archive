@@ -36,11 +36,4 @@ Drop a `cookies.txt` in the working directory to reach age-restricted or private
 
 [archiveyoutube_example.sh](archiveyoutube_example.sh) is a real invocation for the NPR and KEXP channels.
 
-## Check / Test
-
-```bash
-uv run ruff check .   # lint, rules live in pyproject.toml
-uv run ruff format .  # format
-uv run ty check .     # type check
-uv run pytest         # test
-```
+See [README_DEV.md](README_DEV.md) for development setup.
