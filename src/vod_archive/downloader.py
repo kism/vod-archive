@@ -109,7 +109,11 @@ def download_videos(
             console.print("--- DOWNLOAD ITEM ---", style="dim")
             console.print(f"Looking at youtube link: {yt_url} ({reason})")
 
-            raw_info = ydl.extract_info(yt_url)
+            try:
+                raw_info = ydl.extract_info(yt_url)
+            except yt_dlp.utils.DownloadError as e:
+                console.print(f"⚠️  Failed to download {yt_url}: {e}", style="bold red")
+                continue
             info = YtDlpVideoInfo.model_validate(raw_info)
 
             console.print(f"Downloading ({reason}): {info.title} | {yt_url}", style="bold")
